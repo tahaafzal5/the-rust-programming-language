@@ -17,3 +17,13 @@
 
 ### Installing Rust
 * The version of curl that is installed by homebrew does not support the `-tls` option, so removing it from the default rust install command line fixed the error: "curl: (4) A requested feature, protocol or option was not found built-in in this libcurl due to a build-time decision." 
+
+### Intro to Cargo
+* TOML stands for Tom's Obvious, Minimal Language.
+* Packages of code are referred to as crates.
+* We can create a project using `cargo new`.
+* We can build a project using `cargo build`.
+  * TO build it for release, we use `cargo build --release`.
+* We can build and run a project in one step using `cargo run`.
+* We can build a project without producing a binary to check for errors using `cargo check`.
+* Instead of saving the result of the build in the same directory as our code, Cargo stores it in the target/debug directory.
