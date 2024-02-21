@@ -1,3 +1,26 @@
+- [Introduction](#introduction)
+- [Chapter 1](#chapter-1)
+    - [Installing Rust](#installing-rust)
+    - [Intro to Cargo](#intro-to-cargo)
+- [Chapter 2](#chapter-2)
+    - [The `use` Statement](#the-use-statement)
+    - [Cargo](#cargo)
+    - [Match Expressions](#match-expressions)
+    - [Shadowing](#shadowing)
+- [Chapter 3](#chapter-3)
+    - [Variables](#variables)
+    - [Constants](#constants)
+    - [Shadowing](#shadowing-1)
+    - [Scalar Data Types](#scalar-data-types)
+    - [Compound Data Types](#compound-data-types)
+    - [Functions](#functions)
+    - [Parameters](#parameters)
+    - [Statements and Expressions](#statements-and-expressions)
+    - [Functions with Return Values](#functions-with-return-values)
+    - [Comments](#comments)
+    - [Control Flow](#control-flow)
+    - [Loops](#loops)
+
 # Introduction
 
 * Rust is designed to write fast AND safe code whose compiler works *with* you to help you.
