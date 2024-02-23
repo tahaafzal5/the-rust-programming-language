@@ -20,6 +20,16 @@
     - [Comments](#comments)
     - [Control Flow](#control-flow)
     - [Loops](#loops)
+- [Chapter 4](#chapter-4)
+    - [Ownership](#ownership)
+    - [References](#references)
+    - [Mutable References](#mutable-references)
+    - [Dangling References](#dangling-references)
+    - [The Rules of References](#the-rules-of-references)
+      - [The Slice Type](#the-slice-type)
+      - [Other Slices](#other-slices)
+- [Chapter 5](#chapter-5)
+    - [Structs](#structs)
 
 # Introduction
 
@@ -149,7 +159,6 @@
       x + 1
     }
     ```
-* 
 
 ### Functions with Return Values
 * We need to specify the return type after the -> in the function signature
@@ -186,3 +195,82 @@
 * `for`
   * conditional loop
   * loop through a collection like an array that we can do using while checking for the index being <= our array's length, but `for` is cleaner, better, and safer.
+
+# Chapter 4
+
+### Ownership
+* Memory in Rust is managed through a system of ownership with a set of rules that the compiler enforces.
+* Keeping track of what parts of code are using what data on the heap, minimizing the amount of duplicate data on the heap, and cleaning up unused data on the heap so we don't run out of space are all problems that ownership addresses.
+* Rules:
+  * Each value in Rust has an owner
+  * There can only be one owner at a time
+  * When the owner goes out of scope, the value will be dropped
+* `String` type can be mutated but String literals cannot and that is because of the difference in how these two types deal with memory (stack vs heap).
+  * When the size of a String is known as compile time, like literals, they are hardcoded in the final executable, so their size cannot change.
+  * When the size of a String is unknown at compile time and can change during the program's execution, they are allocated on the heap during runtime.
+* Some languages have a garbage collector and some require the programmer to manage the memory (`allocate` and `free`). In Rust, the memory is automatically returned once the variable that owns it goes out of scope, using a function called `drop`.
+* When we do something like the following:
+    ```Rust
+    let s1 = String::from("Hello");
+    let s2 = s1;
+    ```
+  The data from the stack is `move`d into s1 instead of making a shallow copy. This means that when s1 and s2 go out of scope, Rust doesn't try to `drop` the same memory twice. This also means that after `let s2 = s1;`, we cannot use s1 anymore.
+* Rust never creates deep copies of data automatically, instead we use `clone()` to make a deep copy, which is more expensive than `move`.
+* For data types with known size at compile type (e.g. integers), we don't have to call clone and nothing is moved into the new variable but a copy of the value is made. This copy is inexpensive since we already know the size of the variable at compile time and the values are stored on the stack.
+  * `Copy` trait can be placed on types that are stored on the stack that makes the variable's values being copied instead of `move`d.
+  * We cannot add `Copy` trait to types that implement the `Drop` trait.
+* Passing a variable to a function will move or copy, just as assignment does.
+* Returning values can also transfer ownership.
+* The ownership of a variable follows the same pattern every time: assigning a value to another variable moves it. When a variable that includes data on the heap goes out of scope, the value will be cleaned up by `drop` unless ownership of the data has been moved to another variable.
+
+### References
+* Taking ownership and then returning ownership with every function is tedious. References let us let a function use a value but not take ownership.
+* A reference is like a pointer in that it's an address we can follow to access the data stored at that address; the data is owned by some other variable.
+* Unlike a pointer, a reference is guaranteed to point to a valid value of a particular type for the life of that reference.
+* Because a function that takes in a reference does not have ownership to what was passed into it, the value pointed to by the reference is not dropped when the reference is last used.
+* Just as variables are immutable by default, so are references.
+* A reference's scope starts where it is introduced and continues through the last time that reference is used.
+
+### Mutable References
+* Using `mut`, we can make references mutable.
+* Mutable references have one big restriction: if you have a mutable reference to a value, you can have no other references to that value AT THE SAME TIME. We cannot borrow a reference as mutable more than once.
+* Having this restriction prevents data races at compile time.
+* Data races occur when:
+  * Two or more pointers access the same data at the same time.
+  * At least one of the pointers is being used to write to the data.
+  * There’s no mechanism being used to synchronize access to the data.
+* We can create a new scope using {} to allow multiple mutable references, just not simulatenous ones.
+* We also cannot have a mutable reference while we have an immutable one to the same value -- Users of an immutable reference do not expect the value to suddenly change out from under them!
+* Multiple immutable references are allowed because no one who is just reading the data has the ability to change the value and affect anyone else's reading of data.
+* If scopes of references don't overlap, we can borrow a value with a mutable reference after the immutable reference's scope ends.
+* Important: At any given time, you can have either one mutable reference or any number of immutable references.
+  
+### Dangling References
+* In languages with pointers, it is easy to mistakenly create a dangling pointer by freeing some memory while preserving a pointer to that memory, but not in Rust!
+
+### The Rules of References
+#### The Slice Type
+* Slices let you reference a contigious sequence of elements in a collection rather than the whole collection.
+* A slice is a kind of a reference, so it does not have ownership.
+* `iter()` is a method that returns each element in a collection and `enumerate()` wraps the result of `iter()` and returns each element as part of a tuple. The first element is the index and the second is a reference to the element.
+* `first_space_index()` in main.rs is a good solution but since the return value `usize` is separate from the input `string`, there's no guarantee that it will still be valid in the future. Look at the caller of `first_space_index()`. In other words, `usize` isn't tied to the state of the `string` that could lead to bugs.
+* Rust has a solution to this problem: string slices, which is a reference to part of a string: `&string[starting_index..ending_index]`, where `ending_index` is one more than the index you want the slice to end.
+* Using the slice version `_string_slice()` will throw a compile error helping us catch the problem at compile time.
+* String slices' type is `&str`.
+* `[0..2]` and `[..2]` are equal. You can drop the 0 if you want to start at 0 with this range syntax. `[3..]` means 3 onwards to the last index and `[..]` means the slice of the entire string.
+* **Note:** if we try to create a slice in the middle of multibyte character, the program will exit with an error.
+* We can improve the signature from `fn string_slice(string: &String) -> &str` to `fn string_slice(string: &str) -> &str`.
+  * If we have a string slice, we can pass that directly.
+  * If we have a String, we can pass a slice of that String or a reference to the String.
+  * This flexibility takes advantage of "deref coersions".
+  * Defining a function to take a string slice instead of a reference to a String makes our API more general.
+* String literals are string slices already
+
+#### Other Slices
+*  There's a more general type of slice as well.
+*  We can slice an array of `i32`
+   *  ```Rust
+      let a = [1,2,3];
+      let slice = &a[0..2]; // slice will be [1,2] and of type &[i32]
+      ```
+
