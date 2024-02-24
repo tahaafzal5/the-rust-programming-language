@@ -30,6 +30,11 @@
       - [Other Slices](#other-slices)
 - [Chapter 5](#chapter-5)
     - [Structs](#structs)
+    - [Tuple Structs](#tuple-structs)
+    - [Unit-Like Structs without Any Fields](#unit-like-structs-without-any-fields)
+    - [Methods](#methods)
+    - [Methods with more parameters](#methods-with-more-parameters)
+    - [Associated Functions](#associated-functions)
 
 # Introduction
 
