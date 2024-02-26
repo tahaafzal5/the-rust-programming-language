@@ -35,6 +35,14 @@
     - [Methods](#methods)
     - [Methods with more parameters](#methods-with-more-parameters)
     - [Associated Functions](#associated-functions)
+- [Chapter 6](#chapter-6)
+    - [Enums](#enums)
+    - [Option Enum](#option-enum)
+    - [The match Control Flow Construct](#the-match-control-flow-construct)
+    - [Patterns that bind to values](#patterns-that-bind-to-values)
+    - [Matching with `Option<T>`](#matching-with-optiont)
+    - [Catch-All Patterns and the \_ Placeholder](#catch-all-patterns-and-the-_-placeholder)
+    - [Concise Control Flow with if let](#concise-control-flow-with-if-let)
 
 # Introduction
 
@@ -279,3 +287,136 @@
       let slice = &a[0..2]; // slice will be [1,2] and of type &[i32]
       ```
 
+# Chapter 5
+
+### Structs
+* Structs allow us to structure custom, related values into a meaningful group.
+* Like in tuples, the values in structs can have different data types.
+* Unlike in tuples, we can name these groups of values so we don't have to rely on the order of the values.
+* We create `instance` of `struct`s using `{}` and the ending curly brace has  a `;`.
+* To access a specific value in the struct, we use the dot notation.
+* If the instance is mutable, we can use dot notation to change the value in that instance. The entire instance should be mutable; Rust doesn't allow certain fields to be mutable.
+* As with any expression, we can construct a new instance of the struct as the last expression in the function body to implicitly return a new instance.
+  * It makes sense to name the function parameters with the same name as the struct fields, but if there's many fields in the Struct, this can be tedious.
+  * There's a solution: Field Init Shorthand
+    * If the parameters are exactly the same as the struct field names, we can use the field init shorthand. See `build_user_2`.
+* Sometimes, we want to create a new instance of a struct that includes most of the values from another instance but changes some. We can do this with the "Struct Update Syntax"
+    * ``` Rust
+      let user2 = User {
+        email: String::from("new@test.com"),
+        ..user1 // this must come last
+      };
+      ```
+  * But now, data from `user1` has moved into `user2` so we can no longer use `user1`. Specifically, the `String` in `user1` was moved into `user2`.
+  * If we had used new values for both `email` and `username` and thus only used values for `active` and `sign_in_count` from `user1` to construct `user2`, then `user1` would still be valid because that data implements the `Copy` trait and "Stack-Only Data: Copy" occurs for them.
+* The `println!` macro uses `Display` formatting as the default when we use `{}`. This is output intended for direct end user consumption.
+  * The primitive types implement `Display` by default.
+  * Using `{:?}` says we want to use an output format called `Debug`, which we can add using `#[derive(Debug)]` on the Struct. Rust includes functionality for us to print out debugging informating but we need to opt-in to use it.
+    * `{:#?}` will print the output a little more prettier.
+  * Or we can use the `dbg!` macro too
+    * It takes ownership of an expression (as opposed to `println!` that takes a reference), prints the file and line number of where that `dbg!` macro call occurs along with the resultant value of that expression and returns ownership of the value.
+    * It prints to the `stderr`.
+    * We can do something like the following since `dbg!` returns ownership, `radius` would have the same value as it would without `dbg!`.
+      * ```Rust 
+        let circle = Circle(radius: dbg!{1 * scale});
+        ```
+
+### Tuple Structs
+* Tuple structs have the added meaning the struct name provides, but don't have names with each field in the struct; rather each field just has types.
+* Tuple structs are useful when you want to give the whole tuple a name and make the tuple a different type from other tuples.
+* Each tuple struct is its own type even when the types of the fields in structs might be the same.
+* We can use the index after the `.` to access each field.
+
+### Unit-Like Structs without Any Fields
+* Unit-like structs are structs that don't have nay fields.
+* They behave similarly to `()`: the unit type.
+* They are useful when you need to implement a trait on some type but don't have any data that you want to store in the type itself.
+* We don't need `{}` when defining or instantiating unit-like structs.
+
+
+### Methods
+* Our `area_struct()` function in rectangles/src/main.rs is specific to Rectangles.
+* Methods are similar to functions: we declare them with `fn` and a name, they can have parameters and a return value, and they run some code when the method is called from somewhere.
+* Unlike functions, methods are defined within the context of a struct (or an enum or a trait object), and their first parameter is always `self`, which represents the instance of the struct the method is being called on.
+* To define a method within the context of a struct etc, we use the `impl` block. Each struct is allowed to have more than 1 `impl` blocks.
+* Methods can take ownership of `self`, borrow `self` immutably, or borrow `self` mutably, just ask they can any other parameter.
+* `&self` is short for `self: Self` and within an `impl` block, the type `Self` is an alias for the type that the `impl` block is for. 
+  * Methods must have a parameter named `self` of type `Self` for their first parameter, so Rust lets us abbreviate this with only the first name `self` in the first parameter spot.
+  * `&self` in the method parameter means we don't want to take ownership; we want to just read the data. `self` would mean we would take ownership and `&mut self` would mean we'd take ownership to modify.
+* We can choose to give the method the same name as one of our fields. Tehse are usually used as getters. Like `rect1.width()`.
+* `->`
+  * In C and C++, we use `.` if we're calling a method on the object and `->` if we're calling a method on the pointer to an job and need to dereference it first. Like:
+    ```C++
+    // these 2 are the same in C++, but 1 is cleaner
+    object->something();
+    (*object).something();
+    ```
+  * Rust has something called "automatic referencing and dereferencing". When we call a method with `object.something()`, Rust automatically adds `&`, `&mut`, or `*` so `object` matches the signature of the method. Like:
+    ```Rust
+    // these 2 are the same in Rust, but 1 is cleaner
+    p1.distance(&p2);
+    (&p1).distance(&p2);
+    ```
+  * Given the receiver and the name of the  method, Rust can figure out whether the method is reading `&self`, mutating (`&mut self`), or consuming (`self`).
+
+### Methods with more parameters
+* See rectangles/src/main.rs
+
+### Associated Functions
+* All functions within an `impl` block are called associated functions since they're associated with the type names after `impl`.
+* We can define associated functions that don't have `self` as their first parameter (and thus not methods) because they don't need an instance of the type to work with.
+* Associated functions that aren't methods are often used for constructors that will use a new instance of the struct.
+
+# Chapter 6
+
+### Enums
+* Enums allow you to define a type by enumerating its possible variants. It is a way of saying that a value is a one of a possible set of values.
+* Variants of the enum are namespaced under its identifier, and we use `::` to separate the two. All values in an enum are of the same type.
+* Rather than an enum inside a struct, we can put data directly into each enum variant. Because we attach data to each variant of the enum directly, there is no need for an extra struct.
+  * This way, the name of each enum variant that we define also becomes a function that constructs an instance of the enum.
+  * This has another advantage over using the enum in the struct: each variant can have different types and amounts associated data. E.g. in our `IpAddr` example, `V4` can have 4 numeric components between 0 and 255, while `V6` can still be constructed with a String.
+  * You can put any kind of data inside an enum variant: strings, numeric types, structs, or even another enum. Look at `enum Message` in ch6/src/main.rs.
+* We're also able to define methods on enums using `impl` as we are with structs.
+
+### Option Enum
+* The `Option<T>` type encodes the very common scenario in which a value could be something or could be nothing. It is another enum defined by the standard library.
+* Rust doesn't have the null feature because if you try to use a null value as a non-null value, it would lead to errors.
+  * But Rust does have the concept of a value being present or absent.
+* `Option<T>` is included in the prelude and its variants `Some` and `None` can be used without `Option::`.
+* When we define an option with `None`, we need to give the variable an explicit type where the parameter `T` is specified.
+* If we try to use `Option<T>`, even if it has a value `Some`, the compiler won't let us until we handle the case where that value could be `None`. We can do this using `match`.
+* We have to convert an `Option<T>` to `T` before we can use it.
+
+### The match Control Flow Construct
+* `match` allows us to compare a vlaue against a series of patterns and execute code based on which pattern matches.
+* Patterns can be literal strings, variable names, wildcards, etc.
+* `match` arms have 2 parts: a pattern and some code separated by `=>`. The arms' patterns must cover all possibilities.
+
+### Patterns that bind to values
+* Another useful feature of match is that they can bind to the parts of the values that match the pattern.
+  * ```Rust
+    enum Coin {
+        Penny,
+        Nickel,
+        Dime,
+        // binded to a UsState type
+        Quarter(UsState),
+    }
+    ```
+
+### Matching with `Option<T>`
+* Look at ch6/src/main.rs
+
+### Catch-All Patterns and the _ Placeholder
+* Using enums, we can also take special actions for a few particular values, but for all other values take one default action.
+  * We have to put the catch-all arm at the end since the arms of `match` are evaluated in order. If we put the catch-all arm in the beginning, none of the other arms will ever be executed.
+  * We can use `_` if we don't want to use the value in the catch-all pattern or we can assign any name to the value and use it as we want.
+  * `_` matches any value and does not bind to that value telling Rust we aren't going to use the value.
+  * We can use the unit value `()` to indicate we don't want to do anything.
+
+### Concise Control Flow with if let
+* `if let` can be useful in situations where `match` is a bit wordy as it lets us handle values that match one pattern while ignoring the rest.
+* `if let` prevents us from satisfying the `match` expression by adding `_ => ()`.
+* `if let` means less boilerplate code, but we lose `match`'s exhaustive checking.
+* We can think of `if let` that runs code when the value matches one pattern and ignores all other values.
+* We can include an `else` with `if let`. The block of code that goes with `else` is the same as the block of code that would go with the `_` case in the `match` expression.
