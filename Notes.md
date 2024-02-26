@@ -43,6 +43,18 @@
     - [Matching with `Option<T>`](#matching-with-optiont)
     - [Catch-All Patterns and the \_ Placeholder](#catch-all-patterns-and-the-_-placeholder)
     - [Concise Control Flow with if let](#concise-control-flow-with-if-let)
+- [Chapter 7](#chapter-7)
+    - [Packages and Crates](#packages-and-crates)
+    - [Defining Modules to Control Scope and Privacy](#defining-modules-to-control-scope-and-privacy)
+    - [Paths for Referring to an item in a Module Tree](#paths-for-referring-to-an-item-in-a-module-tree)
+    - [Starting Relative Paths with super](#starting-relative-paths-with-super)
+    - [Making Structs and Enums Public](#making-structs-and-enums-public)
+    - [Bringing Paths into Scope with the use Keyword](#bringing-paths-into-scope-with-the-use-keyword)
+    - [Re-exporting Names with pub use](#re-exporting-names-with-pub-use)
+    - [Using External Packages](#using-external-packages)
+    - [Using Nested Paths to Clean Up Large use Lists](#using-nested-paths-to-clean-up-large-use-lists)
+    - [The Glob Operator](#the-glob-operator)
+    - [Separating Modules into Different Files](#separating-modules-into-different-files)
 
 # Introduction
 
@@ -419,4 +431,105 @@
 * `if let` prevents us from satisfying the `match` expression by adding `_ => ()`.
 * `if let` means less boilerplate code, but we lose `match`'s exhaustive checking.
 * We can think of `if let` that runs code when the value matches one pattern and ignores all other values.
-* We can include an `else` with `if let`. The block of code that goes with `else` is the same as the block of code that would go with the `_` case in the `match` expression.
+
+# Chapter 7
+
+* As our project grows, you should organize it by splitting it into multiple modules and then multiple files.
+* A package can contain multiple binary crates and optionally one library crate.
+* As a package grows, you can extract parts into separate crates that become external dependencies.
+* For very large projects comprising a set of interrelated packages that evolve together, Cargo provides workspaces.
+* Rust has a number of features that allow you to manage your code's organization, including which details are exposed, which details are private, and what names are in each scope. These features are sometimes collectively referred to as the module system & include packages, crates, modules and use, and paths.
+
+### Packages and Crates
+* Packages are a Cargo feature that lets you build, test, and share crates.
+  * A package is a bundle of one or more crates that provides a set of functionality.
+  * A package contains a Cargo.toml file that describes how to build those crates.
+  * Cargo is actually a package that contains the binary crate for the command line tool you've been using to build those crates.
+  * The Cargo package also contains a library crate that the binary crate depends on.
+  * Other projects can depend on the Cargo library crate to use the same logic the Cargo command line tool uses.
+  * A package can contain as many binary crates as you like, but at most one library crate.
+  * A package must contain at least one crate whether it is a library crate or a binary crate.
+  * Running `cargo new x` gives us a package named x.
+  * A package can have multiple binary crates by placing files in src/bin directory: each file will be a seprate binary crate.
+* A Crate is a tree of modules that produce a library or executable.
+  * A crate is the smallest amount of code that the Rust compiler considers at a time.
+  * Even if we run `rustc` instead of `cargo` and pass in a single file, it is treated as a crate.
+  * Crates can contain modules and the modules may be defined in other files that get compiled with the crate.
+  * A crate can come as a binary crate or a library crate.
+    * Binary crates are programs you can compile to an executable that you can run.
+      * Each must have a `main` function.
+    * Library crates don't have a `main` function and they don't compile to an executable, but define functionality intended to be shared with multiple projects. E.g. `rand` crate.
+  * The crate root is a source file that the Rust compiler starts from and makes up the root of the module of your crate.
+  * Cargo follows a convention that src/main.rs is the crate root of a binary crate and src/lib.rs is the crate root for a library crate. The package name is used as the name for the executable and library crate that are built.
+  * Cargo passes the crate root to `rustc` to build the binary or library.
+
+* We can create a library crate using `crate new <name> --lib`
+  * The contents of lib.rs form a module named crate at  the root of the crate's module structure known as the module tree like
+    crate
+    └── front_of_house
+        └── hosting
+            └── add_to_waitlist
+            └── seat_at_table
+        └── serving
+            └── take_order
+            └── serve_order
+            └── take_payment
+  * modules `hosting` and `serving` are siblings since they're defined within `front_of_house`.
+  * module `hosting` is the child of module `front_of_house` and it in turn is the parent of `hosting`.
+
+### Defining Modules to Control Scope and Privacy
+* Modules (defined with `mod`) let us organize code within a crate for readability and easy reuse.
+* Modules also allow us to control the privacy of items because code within a module is private by default.
+  * Private items are internal implementation details not available for outside use.
+  * We can make modules and the items in them public using `pub mod`, which exposes them to allow external code to use and depend on them.
+* * In Rust, all items (functions, methods, structs, enums, modules, and constants) are private to parent modules by default. If you want to make an item like a function or struct private, you put it in a module.
+* Items in a parent module can’t use the private items inside child modules, but items in child modules can use the items in their ancestor modules. This is because child modules wrap and hide their implementation details, but the child modules can see the context in which they’re defined.
+* Making a module public with `pub` doesn't make its contents public.
+* Since `eat_at_restaurant()` and `front_of_house` are defined in the same module (they're siblings), we don't have to add `pub` to `front_of_house` for `eat_at_restaurant()` to see it.
+
+### Paths for Referring to an item in a Module Tree
+* To show Rust where to find an item in a module tree, we use a path.
+* A path can be of two forms, but both are followed by one or more identifiers followed by `::`.
+  * An absolute path is the full path starting from a crate root
+    * For code from an external crate, it begins with the crate name
+    * For code from the current crate, it begins with `crate`
+  * A relative path starts from the current module and uses `self`, `super`, or an identifier in the current module.
+
+
+### Starting Relative Paths with super
+* We can construct relative paths that begin in the parent module, rather than the current module or crate root by using `super` at the path's start.
+
+### Making Structs and Enums Public
+* We can also use `pub` to designate structs and enums as public, but there are a few extra details to the usage of `pub` with structs and enums. 
+  * If we use `pub` before a struct definition, we make the struct public, but the struct’s fields will still be private. We can make each field public or not on a case-by-case basis.
+    * Since `back_of_house::Breakfast` has a private field, the struct needs to provide a public associated function that contructs an instance of `Breakfast` (`summer` in our case), otherwise we wouldn't be able to construct an instance of `Breakfast` in `eat_at_restaurant` because we couldn't set the value of the private `seasonal_fruit` field in `eat_at_restaurant`.
+  * In contrast, if we make an `enum` public, all of its variants are then public.
+
+### Bringing Paths into Scope with the use Keyword
+* `use` lets us bring a module into scope once and then use another, shorter name everywhere else in the scope.
+* `use` only creates a shortcut for the particular scope in which the `use` occurs.
+* Bringing the function’s parent module into scope with `use` means we have to specify the parent module when calling the function. Specifying the parent module when calling the function makes it clear that the function isn’t locally defined while still minimizing repetition of the full path.
+* On the other hand, when bringing in structs, enums, and other items with `use`, it’s convention to specify the full path.
+* Because Rust doesn't allow bringing 2 items with the same name into scope with `use`, we bring two types with the same name into the same scope using their parent modules or we can use `as` to specify a new local name for the type(s).
+
+### Re-exporting Names with pub use
+* When we bring a name into scope with `use`, the name is private to the scope.
+* To enable the code that calls our code to refer to tha name as if it had been defined in that code's scope, we can combine `pub` and `use`. This is called re-exporting since we're bringing an item into scope but also making that item available for others to bring into their scope.
+* In module `customer`, if we didn't use `pub` in `pub use crate::front_of_house::hosting;`, external code would have to call `add_to_waitlist()` by using the path `restaurant::front_of_house::hosting::add_to_waitlist()`, but now it can just use `restaurant::hosting::add_to_waitlist()`.
+* With `pub use`, we can write our code with one structure but expose a different structure (like here, external code doesn't have to think about `front_of_house`).
+
+
+### Using External Packages
+* We can add the package name and version in our Cargo.toml file which tells Cargo to download the package and any dependencies and make it available to our project.
+* Then, we bring the definitions in the package into scope we use `use`.
+
+### Using Nested Paths to Clean Up Large use Lists
+* `use std::{cmp:Ordering, io}` instead of `use std::cmp::Ordering` and `use cmp::io` on separate lines.
+
+### The Glob Operator
+* If we want to bring all public items definede in a path into scope, we can specigy that path followed by the `*` operator like `use std::collection::*;`, but this can make it harder to tell what names are in scope.
+
+### Separating Modules into Different Files
+* If we put `hosting.rs` in the src directory, the compiler would expect the hosting.rs code to be in a `hosting` module declared in the crate root, and not declared as a child of the `front_of_house` module.
+* Since `hosting` and `serving` are childs of `front_of_house`, we put them in a directory `src/front_of_house`.
+* The compiler's rules for which files to check for which modules' code mean the directories and files more closely match the module tree.
