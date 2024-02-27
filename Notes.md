@@ -12,6 +12,66 @@
     - [Constants](#constants)
     - [Shadowing](#shadowing-1)
     - [Scalar Data Types](#scalar-data-types)
+    - [Compound Data Types](#compound-data-types)
+    - [Functions](#functions)
+    - [Parameters](#parameters)
+    - [Statements and Expressions](#statements-and-expressions)
+    - [Functions with Return Values](#functions-with-return-values)
+    - [Comments](#comments)
+    - [Control Flow](#control-flow)
+    - [Loops](#loops)
+- [Chapter 4](#chapter-4)
+    - [Ownership](#ownership)
+    - [References](#references)
+    - [Mutable References](#mutable-references)
+    - [Dangling References](#dangling-references)
+    - [The Rules of References](#the-rules-of-references)
+      - [The Slice Type](#the-slice-type)
+      - [Other Slices](#other-slices)
+- [Chapter 5](#chapter-5)
+    - [Structs](#structs)
+    - [Tuple Structs](#tuple-structs)
+    - [Unit-Like Structs without Any Fields](#unit-like-structs-without-any-fields)
+    - [Methods](#methods)
+    - [Methods with more parameters](#methods-with-more-parameters)
+    - [Associated Functions](#associated-functions)
+- [Chapter 6](#chapter-6)
+    - [Enums](#enums)
+    - [Option Enum](#option-enum)
+    - [The match Control Flow Construct](#the-match-control-flow-construct)
+    - [Patterns that bind to values](#patterns-that-bind-to-values)
+    - [Matching with `Option<T>`](#matching-with-optiont)
+    - [Catch-All Patterns and the \_ Placeholder](#catch-all-patterns-and-the-_-placeholder)
+    - [Concise Control Flow with if let](#concise-control-flow-with-if-let)
+- [Chapter 7](#chapter-7)
+    - [Packages and Crates](#packages-and-crates)
+    - [Defining Modules to Control Scope and Privacy](#defining-modules-to-control-scope-and-privacy)
+    - [Paths for Referring to an item in a Module Tree](#paths-for-referring-to-an-item-in-a-module-tree)
+    - [Starting Relative Paths with super](#starting-relative-paths-with-super)
+    - [Making Structs and Enums Public](#making-structs-and-enums-public)
+    - [Bringing Paths into Scope with the use Keyword](#bringing-paths-into-scope-with-the-use-keyword)
+    - [Re-exporting Names with pub use](#re-exporting-names-with-pub-use)
+    - [Using External Packages](#using-external-packages)
+    - [Using Nested Paths to Clean Up Large use Lists](#using-nested-paths-to-clean-up-large-use-lists)
+    - [The Glob Operator](#the-glob-operator)
+    - [Separating Modules into Different Files](#separating-modules-into-different-files)
+- [Chapter 8](#chapter-8)
+  - [Vectors](#vectors)
+    - [Storing Lists of Values with Vectors](#storing-lists-of-values-with-vectors)
+    - [Updating a vector](#updating-a-vector)
+    - [Reading Elements of Vectors](#reading-elements-of-vectors)
+    - [Iterating Over the Values in a Vector](#iterating-over-the-values-in-a-vector)
+    - [Using an Enum to Store Multiple Values](#using-an-enum-to-store-multiple-values)
+    - [Dropping a Vector Drops Its Elements](#dropping-a-vector-drops-its-elements)
+  - [Strings](#strings)
+    - [Storing UTF-8 Encoded Text with Strings](#storing-utf-8-encoded-text-with-strings)
+    - [What is a String?](#what-is-a-string)
+    - [Creating a new String](#creating-a-new-string)
+    - [Updating a String](#updating-a-string)
+    - [Concat with + or format! Macro](#concat-with--or-format-macro)
+    - [Indexing into Strings](#indexing-into-strings)
+    - [Bytes and Scalar Values and Grapheme Clusters](#bytes-and-scalar-values-and-grapheme-clusters)
+    - [Slicing Strings](#slicing-strings)
     - [Methods for Iterating Over Strings](#methods-for-iterating-over-strings)
   - [Storing Keys with Associated Values in Hash Maps](#storing-keys-with-associated-values-in-hash-maps)
     - [Creating a New Hash Map](#creating-a-new-hash-map)
@@ -93,10 +153,10 @@
 
 ### Scalar Data Types
 * Rust is statically typed language, which means we must know the types of all variables at compile time.
-* ```Rust
-  // we need to mention the type annotation `u32` otherwise the compiler won't know which type to parse "42" into
-  let guess: u32 = "42".parse().expect("Not a number!");
-  ```
+  * ```Rust
+    // we need to mention the type annotation `u32` otherwise the compiler won't know which type to parse "42" into
+    let guess: u32 = "42".parse().expect("Not a number!");
+    ```
 * Integers
   * Unsigned integers; `u8`, `u16`, ..., `u128`, `usize`
   * Signed integers: `i8`, `i16`, ..., `i128`, `isize`
@@ -573,10 +633,10 @@
 ### Slicing Strings
 * Indexing into a string is often a bad idea since we dk what the return type would be: a byte value, a character, a grapheme cluster, or a string slice.
 * So, Rust allows us to use `[]` with a range to create a string slice containing particular bytes. To get the first 4 bytes:
-  ```Rust
-  let hello = "Здравствуйте";
-  let s = &hello[0..4];
-  ```
+    ```Rust
+    let hello = "Здравствуйте";
+    let s = &hello[0..4];
+    ```
 
 ### Methods for Iterating Over Strings
 * The best way to operate on pieces of strings is to be explicit about whether you want characters or bytes.
