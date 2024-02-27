@@ -628,7 +628,7 @@
   
 ### Bytes and Scalar Values and Grapheme Clusters
 * Another point about UTF-8 is that there's actually 3 ways to look at strings in Rust: as bytes, scalar values, and grapheme clusters/letters.
-* ![alt text](image.png)
+* ![screenshot](assets/images/image.png)
 
 ### Slicing Strings
 * Indexing into a string is often a bad idea since we dk what the return type would be: a byte value, a character, a grapheme cluster, or a string slice.
