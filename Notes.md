@@ -12,49 +12,15 @@
     - [Constants](#constants)
     - [Shadowing](#shadowing-1)
     - [Scalar Data Types](#scalar-data-types)
-    - [Compound Data Types](#compound-data-types)
-    - [Functions](#functions)
-    - [Parameters](#parameters)
-    - [Statements and Expressions](#statements-and-expressions)
-    - [Functions with Return Values](#functions-with-return-values)
-    - [Comments](#comments)
-    - [Control Flow](#control-flow)
-    - [Loops](#loops)
-- [Chapter 4](#chapter-4)
-    - [Ownership](#ownership)
-    - [References](#references)
-    - [Mutable References](#mutable-references)
-    - [Dangling References](#dangling-references)
-    - [The Rules of References](#the-rules-of-references)
-      - [The Slice Type](#the-slice-type)
-      - [Other Slices](#other-slices)
-- [Chapter 5](#chapter-5)
-    - [Structs](#structs)
-    - [Tuple Structs](#tuple-structs)
-    - [Unit-Like Structs without Any Fields](#unit-like-structs-without-any-fields)
-    - [Methods](#methods)
-    - [Methods with more parameters](#methods-with-more-parameters)
-    - [Associated Functions](#associated-functions)
-- [Chapter 6](#chapter-6)
-    - [Enums](#enums)
-    - [Option Enum](#option-enum)
-    - [The match Control Flow Construct](#the-match-control-flow-construct)
-    - [Patterns that bind to values](#patterns-that-bind-to-values)
-    - [Matching with `Option<T>`](#matching-with-optiont)
-    - [Catch-All Patterns and the \_ Placeholder](#catch-all-patterns-and-the-_-placeholder)
-    - [Concise Control Flow with if let](#concise-control-flow-with-if-let)
-- [Chapter 7](#chapter-7)
-    - [Packages and Crates](#packages-and-crates)
-    - [Defining Modules to Control Scope and Privacy](#defining-modules-to-control-scope-and-privacy)
-    - [Paths for Referring to an item in a Module Tree](#paths-for-referring-to-an-item-in-a-module-tree)
-    - [Starting Relative Paths with super](#starting-relative-paths-with-super)
-    - [Making Structs and Enums Public](#making-structs-and-enums-public)
-    - [Bringing Paths into Scope with the use Keyword](#bringing-paths-into-scope-with-the-use-keyword)
-    - [Re-exporting Names with pub use](#re-exporting-names-with-pub-use)
-    - [Using External Packages](#using-external-packages)
-    - [Using Nested Paths to Clean Up Large use Lists](#using-nested-paths-to-clean-up-large-use-lists)
-    - [The Glob Operator](#the-glob-operator)
-    - [Separating Modules into Different Files](#separating-modules-into-different-files)
+    - [Methods for Iterating Over Strings](#methods-for-iterating-over-strings)
+  - [Storing Keys with Associated Values in Hash Maps](#storing-keys-with-associated-values-in-hash-maps)
+    - [Creating a New Hash Map](#creating-a-new-hash-map)
+    - [Accesssing Values in a Hash Map](#accesssing-values-in-a-hash-map)
+    - [HashMaps and Ownership](#hashmaps-and-ownership)
+    - [Updating a Hash Map](#updating-a-hash-map)
+    - [Overwriting a value](#overwriting-a-value)
+    - [Adding a Key and Value Only if a Key Isn't Present](#adding-a-key-and-value-only-if-a-key-isnt-present)
+    - [Updating a Value Based on the Old Value](#updating-a-value-based-on-the-old-value)
 
 # Introduction
 
@@ -533,3 +499,130 @@
 * If we put `hosting.rs` in the src directory, the compiler would expect the hosting.rs code to be in a `hosting` module declared in the crate root, and not declared as a child of the `front_of_house` module.
 * Since `hosting` and `serving` are childs of `front_of_house`, we put them in a directory `src/front_of_house`.
 * The compiler's rules for which files to check for which modules' code mean the directories and files more closely match the module tree.
+
+# Chapter 8
+* The data that collections point to is stored on the heap.
+
+
+## Vectors
+
+### Storing Lists of Values with Vectors
+* `Vec<T>` allows you to store more than one value in a single data structure that puts all the values next to each other in memory.
+* They store values of the same type.
+* `let v: Vec<i32> = Vec::new()` creates a new, empty vector of type `i32` mentioned by the required type annotation to tell the compiler what data type will be stored in this vector.
+* If we create the vector with initial values, we don't need the type annotation like `let v = vec![1,2,3];`.
+
+### Updating a vector
+* After making the vector `mut`, we can use `push()` to insert values in it.
+
+### Reading Elements of Vectors
+* We can use `v[index]` or `v.get(index)` to get the value at an index.
+  * Out of bounds access with `v[index]` causes the program to panic.
+  * Since `v.get(index)` gives us an Option, out of bounds access will give us a `None` without panicking.
+  
+### Iterating Over the Values in a Vector
+* The rule that we can't have both mutable and immutable references to a vector at the same time applies here too.
+  * **Note:** `.push()` takes a mutable borrow of the vector so we cannot use `push()` while having a immutable reference to an element in the vector like `let first = &v[0]`.
+* `for i in &v {}` can be used to iterable over the elements in the vector.
+  * `for i in &mut v {}` to iterate over mutable references to each element.
+    * To change the value that the mutable reference refers to, we have to dereference using `*` first.
+* Because of the reference to the vector that the `for` loop holds prevents us from removing or inserting items in the `for` loop body.
+
+### Using an Enum to Store Multiple Values
+* Variants of an enum are defined as the same type so when we need one type to represent elements of different types, we can define and use an enum.
+* Using an enum plus a `match` expression means Rust will ensure at compile time that every possible case is handled.
+* If you don't know the exhaustive set of types a program will get at runtime to store in a vector, the enum technique won't work, but we can use a Trait object.
+
+### Dropping a Vector Drops Its Elements
+* Like any other `struct`, a vector is freed when it goes out of scope.
+* When the vector gets dropped, all of its contents are also dropped, meaning the integers it holds will be cleaned up.
+
+## Strings
+
+### Storing UTF-8 Encoded Text with Strings
+* Strings are implemented as a collection of bytes, plus some methods to interpret those bytes as text.
+
+### What is a String?
+* The `String` type, which is provided by Rust’s standard library rather than coded into the core language as `str`, is a growable, mutable, owned, UTF-8 encoded string type.
+
+### Creating a new String
+* Many of the same operations available with `Vec<T>` are available with `String` as well because `String` is actually implemented as a wrapper around a vector of bytes with some extra guarantees, restrictions, and capabilities.
+* We can use `String::from("string literal")` or `"string_literal".to_string()`.
+
+### Updating a String
+* `"hello".push_str("append this");` appends a String to the end of a String.
+* `"hello".push('!');` appends only one character to the end.
+
+### Concat with + or format! Macro
+* We can use `+` to concat Strings. The `+` operator uses the `add()` method whose signature looks like `fn add(self, s: &str) -> String`.
+* Ee can only add a `&str` to a `String`; we can’t add two `String` values together. But the type of `&s2` in main.rs is `&String`, not `&str`, as specified in the second parameter to `add`. So why does it compile?
+  * The compiler can coerce the `&String` argument into a `&str`. When we call the `add` method, Rust uses a deref coercion, which turns `&s2 `into `&s2[..]`.
+  * `&` with `str` in `add` shows `add` doesn't take ownership of `s2`. But since there's no `&` with `self`, ownership is tranferred to `add` and `s1` can no longer be used.
+* For combining Strings in complicated ways, we can use the `format!` macro.
+  * `format!` works like `println!` but instead of printing to the console, it returns the String with the contents.
+  * `format!` doesn't take ownership either.
+
+### Indexing into Strings
+* Accessing a character in a String by index will result in an error in Rust because `String` doesn't implement the `Index<{integer}>` trait.
+* This is because Rust Strings are encoded in UTF8 and each character might not be 1 byte and `string[0]` might result in an unexpected value.
+  
+### Bytes and Scalar Values and Grapheme Clusters
+* Another point about UTF-8 is that there's actually 3 ways to look at strings in Rust: as bytes, scalar values, and grapheme clusters/letters.
+* ![alt text](image.png)
+
+### Slicing Strings
+* Indexing into a string is often a bad idea since we dk what the return type would be: a byte value, a character, a grapheme cluster, or a string slice.
+* So, Rust allows us to use `[]` with a range to create a string slice containing particular bytes. To get the first 4 bytes:
+  ```Rust
+  let hello = "Здравствуйте";
+  let s = &hello[0..4];
+  ```
+
+### Methods for Iterating Over Strings
+* The best way to operate on pieces of strings is to be explicit about whether you want characters or bytes.
+* For individual Unicode scalar values, use the `.chars()` method.
+* Or, we can use `.bytes()` to return each raw byte. Remember Unicode can take more than 1 byte for a character.
+
+## Storing Keys with Associated Values in Hash Maps
+* `HashMap<K, V>` stores a mapping of keys of type `K` to values of type `V` using a hashing function.
+* We need to bring it in scope first: `use std::collections:HashMap;`.
+* By default, HashMap uses SipHas for its hashing function. It provides resistance to DoS attacks involving hash tables.
+* We can swicth the hashing algorithm by providing our own hasher, which is a type that implements `BuildHasher`.
+
+### Creating a New Hash Map
+* To create an empty hash map: `let scores = HashMap::new()`;
+
+### Accesssing Values in a Hash Map
+* We can get the value out by providing they key to the `get()` method.
+* If there's no value for a key, `None` will be returned.
+* Our program in main calls `copied()` to get `Option<i32>` instead of `Option<&i32>`, then `unwrap_or()` with a default value in case the key doesn't exist in the map.
+* We can iterate over the map as well:
+  ```Rust
+  for (key, value) in &scores {
+    // do whatever
+  }
+  ```
+
+### HashMaps and Ownership
+* When using `insert` for example:
+  * For types that implement the Copy trait like `i32`, the values are copied in to the hash map.
+  * For types that do not implement Copy trait like `String`, the values will be moved into the hashmap and the hashmap will be the owner of those values.
+* If we inserted references to values into the hashmap, the values won't be moved into the hashmap. THe values that the references point to must be valid for at least as long as the hashmap is valid.
+
+### Updating a Hash Map
+* Each unique key can only have one value associated with it at a time, but not vice versa.
+* When you want to change the data in a hash map, you have to decide how to handle the case when a key already has a value assigned.
+  * You could replace the old value with the new value, completely disregarding the old value.
+  * You could keep the old value and ignore the new value, only adding the new value if the key doesn’t already have a value. 
+  * Or you could combine the old value and the new value.
+
+### Overwriting a value
+* If we insert a key and a value into a hash map and then insert that same key with a different value, the value associated with that key will be replaced.
+
+### Adding a Key and Value Only if a Key Isn't Present
+* `entry` takes the key you want to check. It returns an enum `Entry` that represents a value that might or might not exist.
+* `scores.entry(String::from("Black")).or_insert(9);`
+* `or_insert()` returns a mutable reference to the value for the corresponding `Entry` key if the key exists. If it doesn't exist, it inserts the parameter as the new value for this key and returns a mutable reference to the new value.
+
+### Updating a Value Based on the Old Value
+* See main.rs.
