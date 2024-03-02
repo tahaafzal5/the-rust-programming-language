@@ -121,7 +121,7 @@
 
 ### Cargo
 * When we include an external dependency, Cargo fetches the latest versions of everything that dependency needs from the registry, which is a copy of data from Crates.io.
-* After updating the registry, Cargo checks the [dependencies] section and downloads any crates listed that aren’t already downloaded.
+* After updating the registry, Cargo checks the `[dependencies]` section and downloads any crates listed that aren’t already downloaded.
 * Cargo.lock is usually checked into source control to ensure reproducible builds.
   * When you build a project for the first time, Cargo figures out all the versions of the dependencies that fit the criteria and then writes them to the Cargo.lock file. When you build your project in the future, Cargo will see that the Cargo.lock file exists and will use the versions specified there rather than doing all the work of figuring out versions again. This lets you have a reproducible build automatically. In other words, your project will remain at 0.8.5 until you explicitly upgrade, thanks to the Cargo.lock file. Because the Cargo.lock file is important for reproducible builds, it’s often checked into source control with the rest of the code in your project.
 
@@ -136,7 +136,7 @@
 # Chapter 3
 
 ### Variables
-* Variables are immutably by default and the `mut` keyword can be used to make them mutable.
+* Variables are immutable by default and the `mut` keyword can be used to make them mutable.
 
 ### Constants
 * `const` keyword can be used to declare a constant. Its value cannot change and we cannot use `mut` keyword with `const`s.
@@ -212,11 +212,11 @@
     ```
 
 ### Functions with Return Values
-* We need to specify the return type after the -> in the function signature
+* We need to specify the return type after the `->` in the function signature.
 * We can just have expressions in the function body without even a `return` or a `;` and that expression would be evaluated and the result be returned.
 
 ### Comments
-* // idiomatic comment style
+* `//` idiomatic comment style
 * Rust also supports documentation comments.
 
 ### Control Flow
@@ -228,16 +228,16 @@
   * Rust will not evaluate a non-boolean to a boolean like so:
     ```Rust
     if number % 2 { };
-    // we must do
+    // So, we must do the following
     if number % 2 == 0 { };
     ```
 
 ### Loops
 * `loop`
-  * We can return values from `loop` by adding that expression after the `break` expression; see ch3/ch3/main.rs
+  * We can return values from `loop` by adding that expression after the `break` expression; see ch3/ch3/src/main.rs
   * For loops within loops, `break` and `continue` apply to the innermost loop by default.
   * We can have a loop label to specify a certain `break` or `continue` applies to which loop instead of the innermost one.
-  * Loop labels begin with a '
+  * Loop labels begin with a `'`.
   
 * `while`
   * conditional loop
@@ -245,7 +245,7 @@
   
 * `for`
   * conditional loop
-  * loop through a collection like an array that we can do using while checking for the index being <= our array's length, but `for` is cleaner, better, and safer.
+  * loop through a collection like an array. We can do this using `while` as we check for the index being <= our array's length, but `for` is cleaner, better, and safer.
 
 # Chapter 4
 
@@ -257,7 +257,7 @@
   * There can only be one owner at a time
   * When the owner goes out of scope, the value will be dropped
 * `String` type can be mutated but String literals cannot and that is because of the difference in how these two types deal with memory (stack vs heap).
-  * When the size of a String is known as compile time, like literals, they are hardcoded in the final executable, so their size cannot change.
+  * When the size of a string is known as compile time, like literals, they are hardcoded in the final executable, so their size cannot change.
   * When the size of a String is unknown at compile time and can change during the program's execution, they are allocated on the heap during runtime.
 * Some languages have a garbage collector and some require the programmer to manage the memory (`allocate` and `free`). In Rust, the memory is automatically returned once the variable that owns it goes out of scope, using a function called `drop`.
 * When we do something like the following:
@@ -265,7 +265,7 @@
     let s1 = String::from("Hello");
     let s2 = s1;
     ```
-  The data from the stack is `move`d into s1 instead of making a shallow copy. This means that when s1 and s2 go out of scope, Rust doesn't try to `drop` the same memory twice. This also means that after `let s2 = s1;`, we cannot use s1 anymore.
+  The data from the stack is `move`d into s1 instead of making a shallow copy. This means that when s1 and s2 go out of scope, Rust doesn't try to `drop` the same memory twice. This also means that after `let s2 = s1;`, we cannot use `s1` anymore.
 * Rust never creates deep copies of data automatically, instead we use `clone()` to make a deep copy, which is more expensive than `move`.
 * For data types with known size at compile type (e.g. integers), we don't have to call clone and nothing is moved into the new variable but a copy of the value is made. This copy is inexpensive since we already know the size of the variable at compile time and the values are stored on the stack.
   * `Copy` trait can be placed on types that are stored on the stack that makes the variable's values being copied instead of `move`d.
@@ -275,16 +275,17 @@
 * The ownership of a variable follows the same pattern every time: assigning a value to another variable moves it. When a variable that includes data on the heap goes out of scope, the value will be cleaned up by `drop` unless ownership of the data has been moved to another variable.
 
 ### References
-* Taking ownership and then returning ownership with every function is tedious. References let us let a function use a value but not take ownership.
+* Taking ownership and then returning ownership with every function is tedious.
+* References let us let a function use a value but not take ownership.
 * A reference is like a pointer in that it's an address we can follow to access the data stored at that address; the data is owned by some other variable.
 * Unlike a pointer, a reference is guaranteed to point to a valid value of a particular type for the life of that reference.
+*  A reference's scope starts where it is introduced and continues through the last time that reference is used.
 * Because a function that takes in a reference does not have ownership to what was passed into it, the value pointed to by the reference is not dropped when the reference is last used.
 * Just as variables are immutable by default, so are references.
-* A reference's scope starts where it is introduced and continues through the last time that reference is used.
 
 ### Mutable References
 * Using `mut`, we can make references mutable.
-* Mutable references have one big restriction: if you have a mutable reference to a value, you can have no other references to that value AT THE SAME TIME. We cannot borrow a reference as mutable more than once.
+* Mutable references have one big restriction: if you have a mutable reference to a value, you can have no other references to that value AT THE SAME TIME. We cannot borrow a reference as mutable more than once or have a mutable and a non-mutable reference at the same time.
 * Having this restriction prevents data races at compile time.
 * Data races occur when:
   * Two or more pointers access the same data at the same time.
@@ -294,7 +295,7 @@
 * We also cannot have a mutable reference while we have an immutable one to the same value -- Users of an immutable reference do not expect the value to suddenly change out from under them!
 * Multiple immutable references are allowed because no one who is just reading the data has the ability to change the value and affect anyone else's reading of data.
 * If scopes of references don't overlap, we can borrow a value with a mutable reference after the immutable reference's scope ends.
-* Important: At any given time, you can have either one mutable reference or any number of immutable references.
+* **Important: At any given time, you can have either one mutable reference or any number of immutable references.**
   
 ### Dangling References
 * In languages with pointers, it is easy to mistakenly create a dangling pointer by freeing some memory while preserving a pointer to that memory, but not in Rust!
@@ -306,16 +307,16 @@
 * `iter()` is a method that returns each element in a collection and `enumerate()` wraps the result of `iter()` and returns each element as part of a tuple. The first element is the index and the second is a reference to the element.
 * `first_space_index()` in main.rs is a good solution but since the return value `usize` is separate from the input `string`, there's no guarantee that it will still be valid in the future. Look at the caller of `first_space_index()`. In other words, `usize` isn't tied to the state of the `string` that could lead to bugs.
 * Rust has a solution to this problem: string slices, which is a reference to part of a string: `&string[starting_index..ending_index]`, where `ending_index` is one more than the index you want the slice to end.
-* Using the slice version `_string_slice()` will throw a compile error helping us catch the problem at compile time.
+* Using the slice version `_string_slice()` will throw a compile error helping us catch the problem at compile time since we now return `&str` instead of a `usize`.
 * String slices' type is `&str`.
 * `[0..2]` and `[..2]` are equal. You can drop the 0 if you want to start at 0 with this range syntax. `[3..]` means 3 onwards to the last index and `[..]` means the slice of the entire string.
 * **Note:** if we try to create a slice in the middle of multibyte character, the program will exit with an error.
 * We can improve the signature from `fn string_slice(string: &String) -> &str` to `fn string_slice(string: &str) -> &str`.
-  * If we have a string slice, we can pass that directly.
-  * If we have a String, we can pass a slice of that String or a reference to the String.
-  * This flexibility takes advantage of "deref coersions".
+  * If we have a string slice, we can pass that directly instead of having to convert to a `String` with `to_string()`.
+  * If we have a String, we can pass a slice of that String or a reference to the String, since Strings are `str`s.
+  * This flexibility takes advantage of "deref coersions" -- covered later.
   * Defining a function to take a string slice instead of a reference to a String makes our API more general.
-* String literals are string slices already
+* String literals are string slices already.
 
 #### Other Slices
 *  There's a more general type of slice as well.
@@ -331,12 +332,13 @@
 * Structs allow us to structure custom, related values into a meaningful group.
 * Like in tuples, the values in structs can have different data types.
 * Unlike in tuples, we can name these groups of values so we don't have to rely on the order of the values.
-* We create `instance` of `struct`s using `{}` and the ending curly brace has  a `;`.
+* We create an `instance` of a `struct` using `{}` and the ending curly brace has  a `;`.
 * To access a specific value in the struct, we use the dot notation.
-* If the instance is mutable, we can use dot notation to change the value in that instance. The entire instance should be mutable; Rust doesn't allow certain fields to be mutable.
+* If the instance is mutable, we can use dot notation to change the value in that instance.
+* The entire instance should be mutable; Rust doesn't allow certain fields to be mutable.
 * As with any expression, we can construct a new instance of the struct as the last expression in the function body to implicitly return a new instance.
   * It makes sense to name the function parameters with the same name as the struct fields, but if there's many fields in the Struct, this can be tedious.
-  * There's a solution: Field Init Shorthand
+  * There's a solution: "Field Init Shorthand"
     * If the parameters are exactly the same as the struct field names, we can use the field init shorthand. See `build_user_2`.
 * Sometimes, we want to create a new instance of a struct that includes most of the values from another instance but changes some. We can do this with the "Struct Update Syntax"
     * ``` Rust
@@ -360,7 +362,7 @@
         ```
 
 ### Tuple Structs
-* Tuple structs have the added meaning the struct name provides, but don't have names with each field in the struct; rather each field just has types.
+* Tuple structs have the added meaning the struct name provides, but they don't have names with each field in the struct; rather each field just has types.
 * Tuple structs are useful when you want to give the whole tuple a name and make the tuple a different type from other tuples.
 * Each tuple struct is its own type even when the types of the fields in structs might be the same.
 * We can use the index after the `.` to access each field.
@@ -380,8 +382,10 @@
 * Methods can take ownership of `self`, borrow `self` immutably, or borrow `self` mutably, just ask they can any other parameter.
 * `&self` is short for `self: Self` and within an `impl` block, the type `Self` is an alias for the type that the `impl` block is for. 
   * Methods must have a parameter named `self` of type `Self` for their first parameter, so Rust lets us abbreviate this with only the first name `self` in the first parameter spot.
-  * `&self` in the method parameter means we don't want to take ownership; we want to just read the data. `self` would mean we would take ownership and `&mut self` would mean we'd take ownership to modify.
-* We can choose to give the method the same name as one of our fields. Tehse are usually used as getters. Like `rect1.width()`.
+  * `&self` in the method parameter means we don't want to take ownership; we want to just read the data.
+  * `self` would mean we would take ownership.
+  * `&mut self` would mean we'd take ownership to modify.
+* We can choose to give the method the same name as one of our fields. These are usually used as getters. Like `rect1.width()`.
 * `->`
   * In C and C++, we use `.` if we're calling a method on the object and `->` if we're calling a method on the pointer to an job and need to dereference it first. Like:
     ```C++
@@ -403,7 +407,7 @@
 ### Associated Functions
 * All functions within an `impl` block are called associated functions since they're associated with the type names after `impl`.
 * We can define associated functions that don't have `self` as their first parameter (and thus not methods) because they don't need an instance of the type to work with.
-* Associated functions that aren't methods are often used for constructors that will use a new instance of the struct.
+* Associated functions that aren't methods are often used for constructors that will use a create instance of the struct.
 
 # Chapter 6
 
@@ -411,7 +415,7 @@
 * Enums allow you to define a type by enumerating its possible variants. It is a way of saying that a value is a one of a possible set of values.
 * Variants of the enum are namespaced under its identifier, and we use `::` to separate the two. All values in an enum are of the same type.
 * Rather than an enum inside a struct, we can put data directly into each enum variant. Because we attach data to each variant of the enum directly, there is no need for an extra struct.
-  * This way, the name of each enum variant that we define also becomes a function that constructs an instance of the enum.
+  * This way, the name of each enum variant that we define also becomes a function that constructs an instance of that enum.
   * This has another advantage over using the enum in the struct: each variant can have different types and amounts associated data. E.g. in our `IpAddr` example, `V4` can have 4 numeric components between 0 and 255, while `V6` can still be constructed with a String.
   * You can put any kind of data inside an enum variant: strings, numeric types, structs, or even another enum. Look at `enum Message` in ch6/src/main.rs.
 * We're also able to define methods on enums using `impl` as we are with structs.
@@ -420,15 +424,15 @@
 * The `Option<T>` type encodes the very common scenario in which a value could be something or could be nothing. It is another enum defined by the standard library.
 * Rust doesn't have the null feature because if you try to use a null value as a non-null value, it would lead to errors.
   * But Rust does have the concept of a value being present or absent.
-* `Option<T>` is included in the prelude and its variants `Some` and `None` can be used without `Option::`.
-* When we define an option with `None`, we need to give the variable an explicit type where the parameter `T` is specified.
+* `Option<T>` is included in the prelude and its variants `Some` and `None` that can be used **without** `Option::`.
+* When we define an `Option` with `None` as its initial value, we need to give the variable an explicit type where the parameter `T` is specified so that the compiler knows what the type of variable should be.
 * If we try to use `Option<T>`, even if it has a value `Some`, the compiler won't let us until we handle the case where that value could be `None`. We can do this using `match`.
 * We have to convert an `Option<T>` to `T` before we can use it.
 
 ### The match Control Flow Construct
-* `match` allows us to compare a vlaue against a series of patterns and execute code based on which pattern matches.
+* `match` allows us to compare a value against a series of patterns and execute code based on which pattern matches.
 * Patterns can be literal strings, variable names, wildcards, etc.
-* `match` arms have 2 parts: a pattern and some code separated by `=>`. The arms' patterns must cover all possibilities.
+* `match` arms have 2 parts: a pattern and some code separated by `=>`. The arms' patterns must cover **all** possibilities.
 
 ### Patterns that bind to values
 * Another useful feature of match is that they can bind to the parts of the values that match the pattern.
@@ -445,7 +449,7 @@
 ### Matching with `Option<T>`
 * Look at ch6/src/main.rs
 
-### Catch-All Patterns and the _ Placeholder
+### Catch-All Patterns and the _ Placeholder  
 * Using enums, we can also take special actions for a few particular values, but for all other values take one default action.
   * We have to put the catch-all arm at the end since the arms of `match` are evaluated in order. If we put the catch-all arm in the beginning, none of the other arms will ever be executed.
   * We can use `_` if we don't want to use the value in the catch-all pattern or we can assign any name to the value and use it as we want.
@@ -467,6 +471,8 @@
 * Rust has a number of features that allow you to manage your code's organization, including which details are exposed, which details are private, and what names are in each scope. These features are sometimes collectively referred to as the module system & include packages, crates, modules and use, and paths.
 
 ### Packages and Crates
+![Workspace, Package, Crates, Modules](https://static.packt-cdn.com/products/9781800560963/graphics/image/Figure_1.1_B16405.jpg)
+
 * Packages are a Cargo feature that lets you build, test, and share crates.
   * A package is a bundle of one or more crates that provides a set of functionality.
   * A package contains a Cargo.toml file that describes how to build those crates.
@@ -490,16 +496,8 @@
   * Cargo passes the crate root to `rustc` to build the binary or library.
 
 * We can create a library crate using `crate new <name> --lib`
-  * The contents of lib.rs form a module named crate at  the root of the crate's module structure known as the module tree like
-    crate
-    └── front_of_house
-        └── hosting
-            └── add_to_waitlist
-            └── seat_at_table
-        └── serving
-            └── take_order
-            └── serve_order
-            └── take_payment
+  * The contents of lib.rs form a module named crate at  the root of the crate's module structure known as the module tree like:
+  ![Tree](assets/images/Tree.png)
   * modules `hosting` and `serving` are siblings since they're defined within `front_of_house`.
   * module `hosting` is the child of module `front_of_house` and it in turn is the parent of `hosting`.
 
@@ -508,10 +506,11 @@
 * Modules also allow us to control the privacy of items because code within a module is private by default.
   * Private items are internal implementation details not available for outside use.
   * We can make modules and the items in them public using `pub mod`, which exposes them to allow external code to use and depend on them.
-* * In Rust, all items (functions, methods, structs, enums, modules, and constants) are private to parent modules by default. If you want to make an item like a function or struct private, you put it in a module.
-* Items in a parent module can’t use the private items inside child modules, but items in child modules can use the items in their ancestor modules. This is because child modules wrap and hide their implementation details, but the child modules can see the context in which they’re defined.
+* In Rust, all items (functions, methods, structs, enums, modules, and constants) are private to parent modules by default. If you want to make an item like a function or struct private, you put it in a module.
+* Items in a parent module can’t use the private items inside child modules, but items in child modules can use the items in their ancestor modules.
+  * This is because child modules wrap and hide their implementation details, but the child modules can see the context in which they’re defined.
 * Making a module public with `pub` doesn't make its contents public.
-* Since `eat_at_restaurant()` and `front_of_house` are defined in the same module (they're siblings), we don't have to add `pub` to `front_of_house` for `eat_at_restaurant()` to see it.
+* Since `eat_at_restaurant()` and `front_of_house` in `customer.rs` are defined in the same module (they're siblings), we don't have to add `pub` to `front_of_house` for `eat_at_restaurant()` to see it.
 
 ### Paths for Referring to an item in a Module Tree
 * To show Rust where to find an item in a module tree, we use a path.
@@ -540,7 +539,7 @@
 
 ### Re-exporting Names with pub use
 * When we bring a name into scope with `use`, the name is private to the scope.
-* To enable the code that calls our code to refer to tha name as if it had been defined in that code's scope, we can combine `pub` and `use`. This is called re-exporting since we're bringing an item into scope but also making that item available for others to bring into their scope.
+* To enable the code that calls our code to refer to that name as if it had been defined in that code's scope, we can combine `pub` and `use`. This is called re-exporting since we're bringing an item into scope but also making that item available for others to bring into their scope.
 * In module `customer`, if we didn't use `pub` in `pub use crate::front_of_house::hosting;`, external code would have to call `add_to_waitlist()` by using the path `restaurant::front_of_house::hosting::add_to_waitlist()`, but now it can just use `restaurant::hosting::add_to_waitlist()`.
 * With `pub use`, we can write our code with one structure but expose a different structure (like here, external code doesn't have to think about `front_of_house`).
 
@@ -615,7 +614,7 @@
 
 ### Concat with + or format! Macro
 * We can use `+` to concat Strings. The `+` operator uses the `add()` method whose signature looks like `fn add(self, s: &str) -> String`.
-* Ee can only add a `&str` to a `String`; we can’t add two `String` values together. But the type of `&s2` in main.rs is `&String`, not `&str`, as specified in the second parameter to `add`. So why does it compile?
+* We can only add a `&str` to a `String`; we can’t add two `String` values together. But the type of `&s2` in main.rs is `&String`, not `&str`, as specified in the second parameter to `add`. So why does it compile?
   * The compiler can coerce the `&String` argument into a `&str`. When we call the `add` method, Rust uses a deref coercion, which turns `&s2 `into `&s2[..]`.
   * `&` with `str` in `add` shows `add` doesn't take ownership of `s2`. But since there's no `&` with `self`, ownership is tranferred to `add` and `s1` can no longer be used.
 * For combining Strings in complicated ways, we can use the `format!` macro.
@@ -635,7 +634,7 @@
 * So, Rust allows us to use `[]` with a range to create a string slice containing particular bytes. To get the first 4 bytes:
     ```Rust
     let hello = "Здравствуйте";
-    let s = &hello[0..4];
+    let s = &hello[0..4]; // s will be Зд
     ```
 
 ### Methods for Iterating Over Strings
@@ -653,7 +652,7 @@
 * To create an empty hash map: `let scores = HashMap::new()`;
 
 ### Accesssing Values in a Hash Map
-* We can get the value out by providing they key to the `get()` method.
+* We can get the value out by providing the key to the `get()` method.
 * If there's no value for a key, `None` will be returned.
 * Our program in main calls `copied()` to get `Option<i32>` instead of `Option<&i32>`, then `unwrap_or()` with a default value in case the key doesn't exist in the map.
 * We can iterate over the map as well:
@@ -667,7 +666,7 @@
 * When using `insert` for example:
   * For types that implement the Copy trait like `i32`, the values are copied in to the hash map.
   * For types that do not implement Copy trait like `String`, the values will be moved into the hashmap and the hashmap will be the owner of those values.
-* If we inserted references to values into the hashmap, the values won't be moved into the hashmap. THe values that the references point to must be valid for at least as long as the hashmap is valid.
+* If we inserted references to values into the hashmap, the values won't be moved into the hashmap. The values that the references point to must be valid for at least as long as the hashmap is valid.
 
 ### Updating a Hash Map
 * Each unique key can only have one value associated with it at a time, but not vice versa.

@@ -4,7 +4,7 @@ fn fix_incorrect_order() {
     cook_order();
     // `fix_incorrect_order()` is in the `back_of_house` module so we can use
     // `super::` to get to `back_of_house`'s parent module, which in this case is
-    // `crate`, the root
+    // `crate`, the root crate.
     super::deliver_order();
 }
 
@@ -13,7 +13,7 @@ fn cook_order() {}
 pub struct Breakfast {
     // customers can choose what toast they want
     pub toast: String,
-    // only chef decides which fruit to give and what's available
+    // only chef decides which fruit to give based on what's available
     seasonal_fruit: String,
 }
 
