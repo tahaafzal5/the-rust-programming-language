@@ -81,6 +81,18 @@
     - [Overwriting a value](#overwriting-a-value)
     - [Adding a Key and Value Only if a Key Isn't Present](#adding-a-key-and-value-only-if-a-key-isnt-present)
     - [Updating a Value Based on the Old Value](#updating-a-value-based-on-the-old-value)
+- [Chapter 9](#chapter-9)
+    - [Unrecoverable Errors with panic!](#unrecoverable-errors-with-panic)
+    - [Recoverable Errors with Result](#recoverable-errors-with-result)
+    - [Matching on Different Errors](#matching-on-different-errors)
+    - [Alternatives to Using match with Result\<T, E\>](#alternatives-to-using-match-with-resultt-e)
+    - [Shortcuts for Panic on Error: unwrap and expect](#shortcuts-for-panic-on-error-unwrap-and-expect)
+    - [Propagating Errors](#propagating-errors)
+    - [A Shortcut for Propagating Errors: The ? Operator](#a-shortcut-for-propagating-errors-the--operator)
+    - [Where the ? Operator Can Be Used](#where-the--operator-can-be-used)
+    - [To panic! or Not to panic!](#to-panic-or-not-to-panic)
+    - [Guidelines for Error Handling](#guidelines-for-error-handling)
+    - [Creating Custom Types for Validation](#creating-custom-types-for-validation)
 
 # Introduction
 
@@ -685,3 +697,129 @@
 
 ### Updating a Value Based on the Old Value
 * See main.rs.
+
+# Chapter 9
+* In many cases Rust requires you to acknowledge the possibility of an error and take some action before your code will compile.
+* Rust groups errors into two major categories: recoverable and unrecoverable errors.
+  * For recoverable errors, we most likely want to report the problem to the user and retry the operation.
+  * Unrecoverable operations are always symptoms of bugs, like accessing a location beyond the end of an array, so we immediately stop the program.
+* Rust doesn't have exceptions.
+  * Instead, it has the type `Result<T, E>` for recoverable errors and the `panic!` macro that stops execution when the program encounters an unrecoverable error.
+
+### Unrecoverable Errors with panic!
+* Rust has the `panic!` macro for when bad things happen in your code, and there’s nothing you can do about it.
+* There are two ways to cause a panic:
+  * by taking an action that causes our code to panic (like accessing an array past the end)
+  * by explicitly calling the `panic!` macro. 
+  * By default, these panics will print a failure message, unwind, clean up the stack, and quit.
+* Since unwinding (walking up the stack) and cleaning up each frame when a panic occurs is too much work, Rust lets us choose an alternate: aborting, which ends the program without cleaning up.
+  * The program's memory then needs to be cleaned by the operation system.
+  * To make the resultant binary as small as possible, you can switch from unwinding to aborting upon a panic by adding `panic = 'abort'` to the appropriate `[profile]` sections in your Cargo.toml file. E.g., to abort on panic in release mode, add this:   
+  `[profile.release]`  
+  `panic = 'abort'`
+* A backtrace is a list of all the functions that have been called to get to this point.
+  * We read backtraces from the top and read until you see files you wrote & that's where the problem is.
+  * We set environment variable `RUST_BACKTRACE` to 1 to see the backtrace like `RUST_BACKTRACE=1 cargo run`.
+  * We need debug symbols to be enabled & they are by default when using `cargo run` without the `--release` flag.
+
+### Recoverable Errors with Result
+* An example of a recoverable error: if you try to open a file and the file doesn’t exist, you might want to create the file instead of terminating the process.
+* Recall `Result` enum with variant `Ok(T)` and `Err(E)`
+  * When opening a file, the generic parameter `T` is filled by the implementation of `File::open()` with the type of the success value, `std::fs::File`, which is a file handle.
+  * The type of `E` used in the error value is `std::io::Error`.
+
+### Matching on Different Errors
+* Code from the previous section will panic no matter why we couldn't open the file, but we might want to take different actions for different failure reasons:
+  * If `File::open` failed because the file doesn’t exist, we want to create the file and return the handle to the new file. 
+  * If `File::open` failed for any other reason (e.g. we didn’t have permission to open the file) we still want the code to `panic!`.
+  * The standard library provides `std::io::ErrorKind` with variants for different errors from an `io` operation.
+
+### Alternatives to Using match with Result<T, E>
+* We can use other ways like closures to save us from lot of indented code.
+* Closures covered later.
+
+### Shortcuts for Panic on Error: unwrap and expect
+* Using `match` works well, but it can be a bit verbose.
+* The `Result<T, E>` type has many helper methods defined on it to do various, more specific tasks.
+* The `unwrap()` method is a shortcut method.
+  * If the `Result` value is the `Ok` variant, `unwrap()` will return the value inside the `Ok`.
+  * If the `Result` is the `Err` variant, `unwrap()` will call the `panic!` macro for us.
+* The `expect()` method lets us also choose the `panic!` error message.
+  * `expect()` is used in the same way as `unwrap()`: to return the file handle or call the `panic!` macro.
+  * The error message used by `expect()` in its call to `panic!` will be the parameter that we pass to `expect()`, rather than the default `panic!` message that `unwrap()` uses.
+
+### Propagating Errors
+* Instead of handling the error within the function itself, you can return the error to the calling code so that it can decide what to do.
+
+### A Shortcut for Propagating Errors: The ? Operator
+* Propagating errors is so common in Rust that Rust provides the question mark operator `?` to make this easier.
+* The `?` placed after a `Result` value is defined to work in almost the same way as the `match` expressions.
+  * If the value of the `Result` is an O`k, the value inside the `Ok` will get returned from this expression, and the program will continue. 
+  * If the value is an `Err`, the `Err` will be returned from the whole function as if we had used the return keyword so the error value gets propagated to the calling code.
+* There is a difference between what the `match` expression does and what the `?` operator does:
+  * Error values that have the `?` operator called on them go through the `from` function, defined in the `From` trait in the standard library, which is used to convert values from one type into another. 
+  * When the `?` operator calls the `from` function, the error type received is converted into the error type defined in the return type of the current function.
+  * This is useful when a function returns one error type to represent all the ways a function might fail, even if parts might fail for many different reasons.
+  * E.g. we could change the `read_username_from_file_short()` function to return a custom error type named `OurError`.
+    * If we also define `impl From<io::Error>` for `OurError` to construct an instance of `OurError` from an `io::Error`, then the `?` operator calls in the body of `read_username_from_file_short()` will call `from` and convert the error types without needing to add any more code to the function.
+* We can even shorten code further by chaining method calls immediately after the `?`.
+* Reading a file into a string is a fairly common operation, so the standard library provides the convenient `fs::read_to_string` function that opens the file, creates a new `String`, reads the contents of the file, puts the contents into that `String`, and returns it.
+
+### Where the ? Operator Can Be Used
+* The `?` operator can only be used in functions whose return type is compatible with the value the `?` is used on.
+  * If we use `?` in a function whose return type isn't compatible, we will get a compile time error.
+  * `?` can only be used in a function that returns `Result`, `Option`, or another type that implements `FromResidual`.
+  * To fix the error, you have two choices:
+    * Change the return type of your function to be compatible with the value you’re using the `?` on as long as you have no restrictions preventing that. 
+    * Use a `match` or one of the `Result<T, E>` methods to handle the `Result<T, E>` in whatever way is appropriate.
+* As with using `?` on `Result`, you can only use `?` on `Option` in a function that returns an `Option`.
+  * The behavior of `?` when called on an `Option<T>` is similar to when called on a `Result<T, E>`:
+    * if the value is `None`, the `None` will be returned early from the function at that point.
+    * If the value is `Some`, the value inside the `Some` is the resultant value of the expression, and the function continues.
+* You can use `?` on a `Result` in a function that returns `Result`, and you can it on an `Option` in a function that returns `Option`, but you can’t mix and match.
+  * `?` won’t automatically convert a `Result` to an `Option` or vice versa.
+  * In those cases, you can use methods like the `ok` method on `Result` or the `ok_or` method on `Option` to do the conversion explicitly.
+* `main` can also return a `Result<(), E>`
+  * The `Box<dyn Error>` type is a trait object.
+  * `Box<dyn Error>` can be read to mean “any kind of error.”
+  * Using `?` on a `Result` value in a main function with the error type `Box<dyn Error>` is allowed because it allows any `Err` value to be returned early.
+  * Even though the body of this main function will only ever return errors of type `std::io::Error`, by specifying `Box<dyn Error>`, this signature will continue to be correct even if more code that returns other errors is added to the body of main.
+  * The `main` function may return any types that implement the `std::process::Termination` trait, which contains a function `report` that returns an `ExitCode`.
+
+### To panic! or Not to panic!
+* You could call `panic!` for any error situation, whether there’s a possible way to recover or not, but then you’re making the decision that a situation is unrecoverable on behalf of the calling code. 
+* When you choose to return a `Result` value, you give the calling code options.
+  * The calling code could choose to attempt to recover in a way that’s appropriate for its situation
+  * Or it could decide that an `Err` value in this case is unrecoverable, so it can call `panic!` and turn your recoverable error into an unrecoverable one.
+* Therefore, returning `Result` is a good default choice when you’re defining a function that might fail.
+* In situations such as examples, prototype code, and tests, it’s more appropriate to write code that panics instead of returning a `Result`.
+* If you can ensure by manually inspecting the code that you’ll never have an `Err` variant, it’s perfectly acceptable to call `unwrap()`:
+  ```Rust
+  // since the ip address is hardcoded to a correct one, there will never be an Err,
+  // but the compiler will force us to handle `Result<T, Err>` from `parse()`.
+  // So in this situation, it is ok to call `unwrap()` or `expect()` (preferred).
+  let home: IpAddr = "127.0.0.1"
+      .parse()
+      .expect("Hardcoded IP address should be valid");
+  ```
+
+### Guidelines for Error Handling
+* It’s advisable to have your code panic when it’s possible that your code could end up in a bad state:
+  * Wwhen some assumption, guarantee, contract, or invariant has been broken, such as when invalid values, contradictory values, or missing values are passed to your code—plus one or more of the following:
+    * The bad state is something that is unexpected, as opposed to something that will likely happen occasionally, like a user entering data in the wrong format.
+    * Your code after this point needs to rely on not being in this bad state, rather than checking for the problem at every step.
+    * There’s not a good way to encode this information in the types you use.
+* If someone calls your code and passes in values that don’t make sense, it’s best to return an error if you can so the user of the library can decide what they want to do in that case. 
+* However, in cases where continuing could be insecure or harmful, the best choice might be to call `panic!` and alert the person using your library.
+* `panic!` is also appropriate if you’re calling external code that is out of your control and it returns an invalid state that you have no way of fixing.
+* However, when failure is expected, it’s more appropriate to return a `Result`, like
+  * a parser being given malformed data
+  * an HTTP request returning a status that indicates you have hit a rate limit
+
+### Creating Custom Types for Validation
+* Having lots of error checks in all of your functions would be verbose and annoying.
+* So, we can use Rust’s type system: the type checking done by the compiler.
+* If your function has a particular type as a parameter, you can proceed with your code’s logic knowing that the compiler has already ensured you have a valid value.
+* E.g. using an unsigned integer type such as `u32`, which ensures the parameter is never negative.
+* We can make a new type and put the validations in a function to create an instance of the type rather than repeating the validations everywhere. That way, it’s safe for functions to use the new type in their signatures and confidently use the values they receive.
+* Look at `Guess`' implementation in src/main.rs.
