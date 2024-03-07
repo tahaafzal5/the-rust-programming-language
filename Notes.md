@@ -93,6 +93,18 @@
     - [To panic! or Not to panic!](#to-panic-or-not-to-panic)
     - [Guidelines for Error Handling](#guidelines-for-error-handling)
     - [Creating Custom Types for Validation](#creating-custom-types-for-validation)
+- [Chapter 10](#chapter-10)
+    - [Removing Duplication by Extracting a Function](#removing-duplication-by-extracting-a-function)
+    - [Generic Data Types](#generic-data-types)
+      - [In Function Definitions](#in-function-definitions)
+      - [In Struct Definitions](#in-struct-definitions)
+      - [In Enum Definitions](#in-enum-definitions)
+      - [In Method Definitions](#in-method-definitions)
+    - [Performance of Code Using Generics](#performance-of-code-using-generics)
+    - [Traits: Defining Shared Behavior](#traits-defining-shared-behavior)
+      - [Defining a Trait](#defining-a-trait)
+      - [Implementing a Trait on a Type](#implementing-a-trait-on-a-type)
+      - [Default Implementations](#default-implementations)
 
 # Introduction
 
@@ -823,3 +835,116 @@
 * E.g. using an unsigned integer type such as `u32`, which ensures the parameter is never negative.
 * We can make a new type and put the validations in a function to create an instance of the type rather than repeating the validations everywhere. That way, it’s safe for functions to use the new type in their signatures and confidently use the values they receive.
 * Look at `Guess`' implementation in src/main.rs.
+
+# Chapter 10
+* Generic functions differ in the types of their parameters so we can run the same code on multiple concrete values.
+* Traits are used to define behavior in a generic way. You can combine traits with generic types to constrain a generic type to accept only those types that have a particular behavior, as opposed to just any type.
+* Lifetimes allow us to give the compiler enough information about borrowed values so that it can ensure references will be valid in more situations than it could without our help.
+
+### Removing Duplication by Extracting a Function
+* See ch10/src/main.rs.
+
+### Generic Data Types
+* We use generics to create definitions for items like function signatures or structs, which we can then use with many different concrete data types.
+
+#### In Function Definitions
+* When defining a function that uses generics, we place the generics in the signature of the function where we would usually specify the data types of the parameters and return value.
+* To define a generic function, we place type name declarations inside angle brackets, `<>`, between the name of the function and the parameter list.
+  * ` fn find_largest<T>(list: &[T]) -> &T`
+  * We read this as: the function `find_largest` is generic over some type `T`. This function has one parameter named list, which is a slice of values of type `T`. The `find_largest` function will return a reference to a value of the same type `T`.
+* We need to make use of `std::cmp::PartialOrd`, which is a trait.
+  * Because we want to compare values of type `T` in the body, we can only use types whose values can be ordered.
+  * To enable comparisons, the standard library has the `std::cmp::PartialOrd` trait that you can implement on types.
+  * By restricting the types valid for `T` to only those that implement `PartialOrd`, our example will compile, because the standard library implements `PartialOrd` on both `i32` and `char`.
+
+#### In Struct Definitions
+* We can also define structs to use a generic type parameter in one or more fields using the `<>` syntax.
+  * We declare the name of the type parameter inside `<>` just after the name of the struct.
+  * Then we use the generic type in the struct definition where we would otherwise specify concrete data types.
+  * To define a `Point` struct where `x` and `y` are both generics but could have different types, we can use multiple generic type parameters.
+
+#### In Enum Definitions
+* As we did with structs, we can define enums to hold generic data types in their variants, for example:
+  ```Rust
+  enum Option<T> {
+    Some(T),
+    None
+  }
+
+  enum Result<T, E> {
+    Ok(T),
+    Err(E),
+  }
+  ```
+
+#### In Method Definitions
+* We can implement methods on structs and enums and use generic types in their definitions too.
+* `impl<T> Point<T> {`
+  * We have to declare `T` just after `impl` so we can use `T` to specify that we’re implementing methods on the type` Point<T>`.
+  * By declaring `T` as a generic type after `impl`, Rust can identify that the type in the angle brackets in `Point` is a generic type rather than a concrete type.
+  * Using the same name for this generic parameter than the generic parameter declared in the struct definition.
+  * Methods written within an `impl` that declares the generic type will be defined on any instance of the type, no matter what concrete type ends up substituting for the generic type.
+* We can also specify constraints on generic types when defining methods on the type. 
+  * For example, implement methods only on `Point<f32>` instances rather than on `Point<T>` instances with any generic type in its own `impl` block than in `impl<T>`.
+* Generic type parameters in a struct definition aren’t always the same as those you use in that same struct’s method signatures. 
+  * Like we can use generic types `X1` and `Y1` for the `Point` struct and `X2` `Y2` for the `mix_points` method signature to make the example clearer. 
+  * The method creates a new `Point` instance with the `x` value from the `self Point` (of type `X1`) and the `y` value from the passed-in `Point` (of type `Y2`).
+  * See `mix_points` in ch10/src/main.rs
+
+### Performance of Code Using Generics
+* Using generic types won’t make your program run any slower than it would with concrete types.
+  * Rust accomplishes this by performing *monomorphization* of the code using generics at compile time.
+  * Monomorphization is the process of turning generic code into specific code by filling in the concrete types that are used when compiled.
+  * E.g. The generic `Option<T>` is replaced with the specific definitions created by the compiler. Because Rust compiles generic code into code that specifies the type in each instance, we pay no runtime cost for using generics.
+
+### Traits: Defining Shared Behavior
+* A *trait* defines the functionality a particular type has and can share with other types. 
+* We can use traits to define shared behavior in an abstract way. We can use *trait bounds* to specify that a generic type can be any type that has certain behavior.
+  * Kinda similar to *interfaces* in other languages but with some differences.
+
+#### Defining a Trait
+* A type’s behavior consists of the methods we can call on that type.
+* Different types share the same behavior if we can call the same methods on all of those types.
+  * Like if we could call `summarize()` on an object of `NewsArticle` and of `Tweet`.
+* Trait definitions are a way to group method signatures together to define a set of behaviors necessary to accomplish some purpose.
+* ```Rust
+  pub trait Summary {
+    fn summarize(&self) -> String;
+  }
+  ```
+* Because we made the trait public using `pub`, crates depending on this crate can make use of this trait too.
+* Each type implementing this trait must provide its own custom behavior for the body of the method. The compiler will enforce that any type that has the `Summary` trait will have the method `summarize` defined with this signature exactly.
+* A trait can have multiple methods in its body: the method signatures are listed one per line, and each line ends in a semicolon.
+
+#### Implementing a Trait on a Type
+* This is how
+  * ```Rust
+    pub struct NewsArticle {
+      pub headline: String,
+      pub published: bool,
+      pub author: String,
+    }
+
+    impl Summary for NewsArticle {
+        fn summarize(&self) -> String {
+            format!("{}, by {}", self.headline, self.author)
+        }
+    }
+    ```
+* Users of the crate can call the trait methods on instances of `NewsArticle` and `Tweet` in the same way we call regular methods. 
+* The only difference is that the user must bring the trait into scope as well as the types.
+  * ```Rust
+    use aggregator::{Summary, Tweet};
+    ```
+* Other crates that depend on the `aggregator` crate can also bring the `Summary` trait into scope to implement `Summary` on their own types.
+* A restriction with traits is that we can implement a trait on a type only if either the trait or the type, or both, are local to our crate.
+  * E.g. we can implement standard library traits like `Display` on a custom type like `Tweet` as part of our `aggregator` crate functionality because the type `Tweet` is local to our `aggregator` crate. 
+  * We can also implement `Summary` on `Vec<T>` in our `aggregator` crate because the trait `Summary` is local to our `aggregator` crate.
+* But we can’t implement external traits on external types. 
+  * E.g., we can’t implement the `Display` trait on `Vec<T>` within our `aggregator` crate because `Display` and `Vec<T>` are both defined in the standard library and aren’t local to our `aggregator` crate.
+* This restriction is part of a property called *coherence*, and more specifically the *orphan rule*, so named because the parent type is not present. 
+* This rule ensures that other people’s code can’t break your code and vice versa. 
+* Without the rule, two crates could implement the same trait for the same type, and Rust wouldn’t know which implementation to use.
+
+#### Default Implementations
+* 
