@@ -75,7 +75,7 @@
     - [Methods for Iterating Over Strings](#methods-for-iterating-over-strings)
   - [Storing Keys with Associated Values in Hash Maps](#storing-keys-with-associated-values-in-hash-maps)
     - [Creating a New Hash Map](#creating-a-new-hash-map)
-    - [Accesssing Values in a Hash Map](#accesssing-values-in-a-hash-map)
+    - [Accessing Values in a Hash Map](#accessing-values-in-a-hash-map)
     - [HashMaps and Ownership](#hashmaps-and-ownership)
     - [Updating a Hash Map](#updating-a-hash-map)
     - [Overwriting a value](#overwriting-a-value)
@@ -155,7 +155,7 @@
 
 
 ### Shadowing
-* Rust allows us to shadow/reuse varibale names rather than forcing us to create two unique variables.
+* Rust allows us to shadow/reuse variable names rather than forcing us to create two unique variables.
 
 # Chapter 3
 
@@ -170,7 +170,7 @@
 * Constants can only be set to a constant expression, not the result of a value that could only be computed at run time.
 
 ### Shadowing
-* The second varibale overshadows the first, taking any uses of the variable name to itself until either it itself is shadowed or the scope ends.
+* The second variable overshadows the first, taking any uses of the variable name to itself until either it itself is shadowed or the scope ends.
 * Shadowing != making a variable `mut`.
 * When we shadow a variable, we can change the type of the value but reuse the same name.
   * But if we try to use the same name with `mut` and have a different type in the variable that is shadowing, we'll get a mismatched types compiler error.
@@ -221,7 +221,7 @@
 * Rust doesn't care where you define your functions, as long as you define them somewhere in the scope of the caller.
 
 ### Parameters
-* Function's signature has the following structure (parameter: type) as opposed to (type paramater) in some languages
+* Function's signature has the following structure (parameter: type) as opposed to (type parameter) in some languages
 * We must declare the type of each parameter.
 
 ### Statements and Expressions
@@ -315,7 +315,7 @@
   * Two or more pointers access the same data at the same time.
   * At least one of the pointers is being used to write to the data.
   * There’s no mechanism being used to synchronize access to the data.
-* We can create a new scope using {} to allow multiple mutable references, just not simulatenous ones.
+* We can create a new scope using {} to allow multiple mutable references, just not simultaneous ones.
 * We also cannot have a mutable reference while we have an immutable one to the same value -- Users of an immutable reference do not expect the value to suddenly change out from under them!
 * Multiple immutable references are allowed because no one who is just reading the data has the ability to change the value and affect anyone else's reading of data.
 * If scopes of references don't overlap, we can borrow a value with a mutable reference after the immutable reference's scope ends.
@@ -326,7 +326,7 @@
 
 ### The Rules of References
 #### The Slice Type
-* Slices let you reference a contigious sequence of elements in a collection rather than the whole collection.
+* Slices let you reference a contiguous sequence of elements in a collection rather than the whole collection.
 * A slice is a kind of a reference, so it does not have ownership.
 * `iter()` is a method that returns each element in a collection and `enumerate()` wraps the result of `iter()` and returns each element as part of a tuple. The first element is the index and the second is a reference to the element.
 * `first_space_index()` in main.rs is a good solution but since the return value `usize` is separate from the input `string`, there's no guarantee that it will still be valid in the future. Look at the caller of `first_space_index()`. In other words, `usize` isn't tied to the state of the `string` that could lead to bugs.
@@ -338,7 +338,7 @@
 * We can improve the signature from `fn string_slice(string: &String) -> &str` to `fn string_slice(string: &str) -> &str`.
   * If we have a string slice, we can pass that directly instead of having to convert to a `String` with `to_string()`.
   * If we have a String, we can pass a slice of that String or a reference to the String, since Strings are `str`s.
-  * This flexibility takes advantage of "deref coersions" -- covered later.
+  * This flexibility takes advantage of "deref coercions" -- covered later.
   * Defining a function to take a string slice instead of a reference to a String makes our API more general.
 * String literals are string slices already.
 
@@ -375,7 +375,7 @@
   * If we had used new values for both `email` and `username` and thus only used values for `active` and `sign_in_count` from `user1` to construct `user2`, then `user1` would still be valid because that data implements the `Copy` trait and "Stack-Only Data: Copy" occurs for them.
 * The `println!` macro uses `Display` formatting as the default when we use `{}`. This is output intended for direct end user consumption.
   * The primitive types implement `Display` by default.
-  * Using `{:?}` says we want to use an output format called `Debug`, which we can add using `#[derive(Debug)]` on the Struct. Rust includes functionality for us to print out debugging informating but we need to opt-in to use it.
+  * Using `{:?}` says we want to use an output format called `Debug`, which we can add using `#[derive(Debug)]` on the Struct. Rust includes functionality for us to print out debugging information but we need to opt-in to use it.
     * `{:#?}` will print the output a little more prettier.
   * Or we can use the `dbg!` macro too
     * It takes ownership of an expression (as opposed to `println!` that takes a reference), prints the file and line number of where that `dbg!` macro call occurs along with the resultant value of that expression and returns ownership of the value.
@@ -506,7 +506,7 @@
   * A package can contain as many binary crates as you like, but at most one library crate.
   * A package must contain at least one crate whether it is a library crate or a binary crate.
   * Running `cargo new x` gives us a package named x.
-  * A package can have multiple binary crates by placing files in src/bin directory: each file will be a seprate binary crate.
+  * A package can have multiple binary crates by placing files in src/bin directory: each file will be a separate binary crate.
 * A Crate is a tree of modules that produce a library or executable.
   * A crate is the smallest amount of code that the Rust compiler considers at a time.
   * Even if we run `rustc` instead of `cargo` and pass in a single file, it is treated as a crate.
@@ -551,7 +551,7 @@
 ### Making Structs and Enums Public
 * We can also use `pub` to designate structs and enums as public, but there are a few extra details to the usage of `pub` with structs and enums. 
   * If we use `pub` before a struct definition, we make the struct public, but the struct’s fields will still be private. We can make each field public or not on a case-by-case basis.
-    * Since `back_of_house::Breakfast` has a private field, the struct needs to provide a public associated function that contructs an instance of `Breakfast` (`summer` in our case), otherwise we wouldn't be able to construct an instance of `Breakfast` in `eat_at_restaurant` because we couldn't set the value of the private `seasonal_fruit` field in `eat_at_restaurant`.
+    * Since `back_of_house::Breakfast` has a private field, the struct needs to provide a public associated function that constructs an instance of `Breakfast` (`summer` in our case), otherwise we wouldn't be able to construct an instance of `Breakfast` in `eat_at_restaurant` because we couldn't set the value of the private `seasonal_fruit` field in `eat_at_restaurant`.
   * In contrast, if we make an `enum` public, all of its variants are then public.
 
 ### Bringing Paths into Scope with the use Keyword
@@ -576,7 +576,7 @@
 * `use std::{cmp:Ordering, io}` instead of `use std::cmp::Ordering` and `use cmp::io` on separate lines.
 
 ### The Glob Operator
-* If we want to bring all public items definede in a path into scope, we can specigy that path followed by the `*` operator like `use std::collection::*;`, but this can make it harder to tell what names are in scope.
+* If we want to bring all public items defined in a path into scope, we can specify that path followed by the `*` operator like `use std::collection::*;`, but this can make it harder to tell what names are in scope.
 
 ### Separating Modules into Different Files
 * If we put `hosting.rs` in the src directory, the compiler would expect the hosting.rs code to be in a `hosting` module declared in the crate root, and not declared as a child of the `front_of_house` module.
@@ -640,7 +640,7 @@
 * We can use `+` to concat Strings. The `+` operator uses the `add()` method whose signature looks like `fn add(self, s: &str) -> String`.
 * We can only add a `&str` to a `String`; we can’t add two `String` values together. But the type of `&s2` in main.rs is `&String`, not `&str`, as specified in the second parameter to `add`. So why does it compile?
   * The compiler can coerce the `&String` argument into a `&str`. When we call the `add` method, Rust uses a deref coercion, which turns `&s2 `into `&s2[..]`.
-  * `&` with `str` in `add` shows `add` doesn't take ownership of `s2`. But since there's no `&` with `self`, ownership is tranferred to `add` and `s1` can no longer be used.
+  * `&` with `str` in `add` shows `add` doesn't take ownership of `s2`. But since there's no `&` with `self`, ownership is transferred to `add` and `s1` can no longer be used.
 * For combining Strings in complicated ways, we can use the `format!` macro.
   * `format!` works like `println!` but instead of printing to the console, it returns the String with the contents.
   * `format!` doesn't take ownership either.
@@ -670,12 +670,12 @@
 * `HashMap<K, V>` stores a mapping of keys of type `K` to values of type `V` using a hashing function.
 * We need to bring it in scope first: `use std::collections:HashMap;`.
 * By default, HashMap uses SipHas for its hashing function. It provides resistance to DoS attacks involving hash tables.
-* We can swicth the hashing algorithm by providing our own hasher, which is a type that implements `BuildHasher`.
+* We can switch the hashing algorithm by providing our own hasher, which is a type that implements `BuildHasher`.
 
 ### Creating a New Hash Map
 * To create an empty hash map: `let scores = HashMap::new()`;
 
-### Accesssing Values in a Hash Map
+### Accessing Values in a Hash Map
 * We can get the value out by providing the key to the `get()` method.
 * If there's no value for a key, `None` will be returned.
 * Our program in main calls `copied()` to get `Option<i32>` instead of `Option<&i32>`, then `unwrap_or()` with a default value in case the key doesn't exist in the map.
@@ -817,7 +817,7 @@
 
 ### Guidelines for Error Handling
 * It’s advisable to have your code panic when it’s possible that your code could end up in a bad state:
-  * Wwhen some assumption, guarantee, contract, or invariant has been broken, such as when invalid values, contradictory values, or missing values are passed to your code—plus one or more of the following:
+  * When some assumption, guarantee, contract, or invariant has been broken, such as when invalid values, contradictory values, or missing values are passed to your code—plus one or more of the following:
     * The bad state is something that is unexpected, as opposed to something that will likely happen occasionally, like a user entering data in the wrong format.
     * Your code after this point needs to rely on not being in this bad state, rather than checking for the problem at every step.
     * There’s not a good way to encode this information in the types you use.
@@ -893,7 +893,7 @@
 
 ### Performance of Code Using Generics
 * Using generic types won’t make your program run any slower than it would with concrete types.
-  * Rust accomplishes this by performing *monomorphization* of the code using generics at compile time.
+  * Rust accomplishes this by performing *monomorphsization* of the code using generics at compile time.
   * Monomorphization is the process of turning generic code into specific code by filling in the concrete types that are used when compiled.
   * E.g. The generic `Option<T>` is replaced with the specific definitions created by the compiler. Because Rust compiles generic code into code that specifies the type in each instance, we pay no runtime cost for using generics.
 
