@@ -105,6 +105,25 @@
       - [Defining a Trait](#defining-a-trait)
       - [Implementing a Trait on a Type](#implementing-a-trait-on-a-type)
       - [Default Implementations](#default-implementations)
+      - [Traits as Parameters](#traits-as-parameters)
+      - [Trait Bound Syntax](#trait-bound-syntax)
+      - [Specifying Multiple Trait Bounds with the + Syntax](#specifying-multiple-trait-bounds-with-the--syntax)
+      - [Clearer Trait Bounds with where Clauses](#clearer-trait-bounds-with-where-clauses)
+      - [Returning Types That Implement Traits](#returning-types-that-implement-traits)
+      - [Using Trait Bounds to Conditionally Implement Methods](#using-trait-bounds-to-conditionally-implement-methods)
+    - [Validating References with Lifetimes](#validating-references-with-lifetimes)
+      - [Preventing Dangling References with Lifetimes](#preventing-dangling-references-with-lifetimes)
+      - [The Borrow Checker](#the-borrow-checker)
+      - [Generic Lifetimes in Functions](#generic-lifetimes-in-functions)
+      - [Lifetime Annotation Syntax](#lifetime-annotation-syntax)
+      - [Lifetime Annotations in Function Signatures](#lifetime-annotations-in-function-signatures)
+      - [Thinking in Terms of Lifetimes](#thinking-in-terms-of-lifetimes)
+      - [Lifetime Annotations in Struct Definitions](#lifetime-annotations-in-struct-definitions)
+      - [Lifetime Elision](#lifetime-elision)
+      - [Lifetime Annotations in Method Definitions](#lifetime-annotations-in-method-definitions)
+      - [The Static Lifetime](#the-static-lifetime)
+      - [Generic Type Parameters, Trait Bounds, and Lifetimes Together](#generic-type-parameters-trait-bounds-and-lifetimes-together)
+      - [Summary](#summary)
 
 # Introduction
 
@@ -947,4 +966,308 @@
 * Without the rule, two crates could implement the same trait for the same type, and Rust wouldn’t know which implementation to use.
 
 #### Default Implementations
-* 
+* Sometimes it’s useful to have default behavior for some or all of the methods in a trait instead of requiring implementations for all methods on every type.
+* Then, as we implement the trait on a particular type, we can keep or override each method’s default behavior.
+* To provide a default implementation, we specify a default implementation for the trait instead of only defining the method signature.
+* To use a default implementation, we specify an empty `impl` block with `impl` of the trait for a struct.
+  * If your struct wants to override the default implementation, you just do it normally since the syntax for overriding a default implementation is the same as the syntax for implementing a trait method that doesn’t have a default implementation.
+* Default implementations can call other methods in the same trait, even if those other methods don’t have a default implementation.
+  * In this way, a trait can provide a lot of useful functionality and only require implementors to specify a small part of it.
+* **Note: it isn’t possible to call the default implementation from an
+overriding implementation of that same method.**
+
+#### Traits as Parameters
+* With traits as parameters, we can define functions that accept many different types.
+  * ```Rust
+    pub fn notify(item: &impl Summary) {
+      println!("Breaking news! {}", item.summarize());
+    }
+    ```
+* In the body of `notify`, we can call any methods on item that come from the `Summary` trait, such as `summarize()`.
+* We can pass `notify()` any instance of `Tweet` or `NewsArticle`.
+
+#### Trait Bound Syntax
+* The `impl Trait` syntax works for straightforward cases but is actually syntax sugar for a longer form known as a *trait bound*; it looks like this:
+  * ```Rust
+    pub fn notify<T: Summary>(item: &T) {
+      println!("Breaking news! {}", item.summarize());
+    }
+    ```
+* This above example is the same as the example in "Traits as Parameters".
+* With Traits as Parameters, having multiple parameters would look like:
+  * ```Rust
+    pub fn notify(item1: &impl Summary, item2: &impl Summary)
+    ```
+* But we can shorten it with Trait Bound Syntax as:
+  * ```Rust
+    pub fn notify<T: Summary>(item1: &T, item2: &T)
+    ``` 
+* The generic type `T` specified as the type of the `item1` and `item2` parameters constrains the function such that the concrete type of the value passed as an argument for `item1` and `item2` must be the same.
+  
+#### Specifying Multiple Trait Bounds with the + Syntax
+* We can also specify more than one trait bound. 
+* Say we wanted `notify` to use display formatting as well as `summarize()` on `item`: we specify in the `notify` definition that `item` must implement both `Display` and `Summary` using the `+`:
+  * ```Rust
+    // Traits as Parameter
+    pub fn notify(item: &impl(Summary + Display))
+
+    // Trait Bound Syntax
+    pub fn notify<T: Summarize + Display>(item: T)
+    ```
+* With the two trait bounds specified, the body of `notify` can call `summarize` and use `{}` to format item.
+
+#### Clearer Trait Bounds with where Clauses
+* Using too many trait bounds has its downsides. 
+* Each generic has its own trait bounds, so functions with multiple generic type parameters can contain lots of trait bound information between the function’s name and its parameter list, making the function signature hard to read. 
+* We can use the `where` clause like so:
+  * ```Rust
+    // instead of doing this
+    fn some_function<T: Display + Clone, U: Clone + Debug>(t: &T, u: &U) -> i32 {
+
+    // we can do this
+    fn some_function(T, U)(t: &T, u: &U) -> i32 {
+      where
+        T: Display + Clone,
+        U: Clone + Debug,
+    }
+    ```
+
+#### Returning Types That Implement Traits
+* We can also use the `impl Trait` syntax in the return position to return a value of some type that implements a trait:
+  * ```Rust
+    fn returns_summarizable() -> impl Summary {
+      Tweet {
+        // ...
+      }
+    }
+    ```
+* You can only use `impl Trait` if you’re returning a single type. 
+* E.g, this code that returns either a `NewsArticle` or a `Tweet` with the return type specified as `impl Summary` **wouldn’t work**:
+  * ```Rust
+    fn returns_summarizable(switch: bool) -> impl Summary {
+      if switch {
+        Tweet {
+          // ...
+        }
+      } else {
+        NewsArticle {
+          // ...
+        }
+      }
+    }
+    ```
+* Returning either a `NewsArticle` or a `Tweet` **isn’t allowed** due to restrictions around how the `impl Trait` syntax is implemented in the compiler.
+
+#### Using Trait Bounds to Conditionally Implement Methods
+* By using a trait bound with an `impl` block that uses generic type parameters, we can implement methods conditionally for types that implement the specified traits.
+* E.g. the type `Pair<T>` always implements the `new` function to return a new instance of `Pair<T>`. But in the next `impl` block, `Pair<T>` only implements the `cmp_display` method if its inner type `T` implements the `PartialOrd` trait that enables comparison and the `Display` trait that enables printing.
+  * ```Rust
+    use std::fmt::Display;
+
+    struct Pair<T> {
+      x: T,
+      y: T,
+    }
+
+    impl<T> Pair<T> {
+      fn new(x: T, y: T) -> Self {
+        Self { x, y }
+      }
+    }
+
+    impl<T: Display + PartialOrd> Pair<T> {
+      fn cmp_display(&self) {
+        if self.x >= self.y {
+          println!("The largest member is x = {}", self.x);
+        } else {
+          println!("The largest member is y = {}", self.y);
+        }
+      }
+    }
+    ```
+* We can also conditionally implement a trait for any type that implements another trait.
+* Implementations of a trait on any type that satisfies the trait bounds are called *blanket implementations* and are used a lot in the Rust standard library.
+  * E.g. the standard library implements the `ToString` trait on any type that implements the `Display` trait.
+  * The `impl` block in the standard library looks similar to this code:
+    * ```Rust
+      impl<T: Display> ToString for T {
+        // ...
+      }
+      ```
+  * Because the standard library has this blanket implementation, we can call the `to_string` method defined by the `ToString` trait on any type that implements the `Display` trait.
+    * E.g. integers into their corresponding String values like this because integers implement `Display`: `let three = 3.to_string();`
+  
+### Validating References with Lifetimes
+* Rather than ensuring that a type has the behavior we want (that Traits do for us), lifetimes ensure that references are valid as long as we need them to be.
+* Every reference in Rust has a *lifetime*, which is the scope for which that reference is valid.
+* Most of the time, lifetimes are implicit and inferred, just like most of the time, types are inferred. 
+  * We must annotate types only when multiple types are possible.
+  * In a similar way, we must annotate lifetimes when the lifetimes of references could be related in a few different ways.
+  * Rust requires us to annotate the relationships using generic lifetime parameters to ensure the actual references used at runtime will definitely be valid.
+
+#### Preventing Dangling References with Lifetimes
+* The main aim of lifetimes is to prevent *dangling references*, which cause a program to reference data other than the data it’s intended to reference.
+* If Rust allowed us using references to memory that has been deallocated, anything we try to do with the reference variable wouldn’t work correctly. 
+* So how does Rust determine that this code is invalid? It uses a *borrow checker*.
+
+#### The Borrow Checker
+* The Rust compiler has a borrow checker that compares scopes to determine whether all borrows are valid.
+  * ```Rust
+    fn main() {
+      let r;              // ---------+-- 'r
+                          //          |
+      {                   //          |
+        let x = 5;        // -+-- 'x  |
+        r = &x;           //  |       |
+      }                   // -+       |
+                          //          | 
+      println!("r: {r}"); //          |
+    }                     // ---------+
+    ```
+* At compile time, Rust compares the size of the two lifetimes and sees that `r` has a lifetime of `'r` but that it refers to memory with a lifetime of `'x`.
+* The program is rejected because `'x` is shorter than `'r`: the subject of the reference doesn’t live as long as the reference.
+* If `x` had a lifetime equal or greater than `'r`, that would be allowed.
+
+#### Generic Lifetimes in Functions
+* Looking at `longest()` in src/main.rs
+  * `fn longest(string1: &str, string2: &str) -> &str {` doesn't compile because according to the compiler error, the return type needs a generic lifetime parameter on it because Rust can’t tell whether the reference being returned refers to `string1` or `string2`.
+  * Actually, we don’t know either, because the `if` block in the body of this function returns a reference to `string1` and the `else` block returns a reference to `string2`!
+  * When we’re defining this function, we don’t know the concrete values that will be passed into this function, so we don’t know whether the `if` case or the `else` case will execute.
+  * We also don’t know the concrete lifetimes of the references that will be passed in, so we can’t look at the scopes as we did in the previous examples to determine whether the reference we return will always be valid.
+  * The borrow checker can’t determine this either, because it doesn’t know how the lifetimes of `string1` and `string2` relate to the lifetime of the return value.
+  * To fix this error, we’ll add generic lifetime parameters that define the relationship between the references so the borrow checker can perform its analysis.
+
+#### Lifetime Annotation Syntax
+* Lifetime annotations don’t change how long any of the references live. 
+* Rather, they describe the relationships of the lifetimes of multiple references to each other without affecting the lifetimes.
+* Just as functions can accept any type when the signature specifies a generic type parameter, functions can accept references with any lifetime by specifying a generic lifetime parameter.
+* Syntax: the names of lifetime parameters must start with an apostrophe (`'`) and are usually all lowercase and very short, like generic types. 
+  * Most people use the name `'a` for the first lifetime annotation.
+  * We place lifetime parameter annotations after the `&` of a reference, using a space to separate the annotation from the reference’s type.
+  * ```Rust
+    &i32        // a reference
+    &'a i32     // a reference with an explicit lifetime
+    &'a mut i32 // a mutable reference with an explicit lifetime
+    ```
+* One lifetime annotation by itself doesn’t have much meaning because the annotations are meant to tell Rust how generic lifetime parameters of multiple references relate to each other.
+
+#### Lifetime Annotations in Function Signatures
+* To use lifetime annotations in function signatures, we need to declare the generic *lifetime* parameters inside angle brackets between the function name and the parameter list, just as we did with generic *type* parameters.
+* `fn longest<'a>(string1: &'a str, string2: &'a str) -> &'a str {`
+  * The function signature tells Rust that for some lifetime `'a`, the function takes two parameters, both of which are string slices that live at least as long as lifetime `'a`. 
+  * The function signature also tells Rust that the string slice returned from the function will live at least as long as lifetime `'a`. 
+  * **In practice, it means that the lifetime of the reference returned by the `longest()` function is the same as the smaller of the lifetimes of the values referred to by the function arguments. These relationships are what we want Rust to use when analyzing this code.**
+  * We’re specifying that the borrow checker should reject any values that don’t adhere to these constraints. Note that the `longest()` function doesn’t need to know exactly how long `string1` and `string2` will live, only that some scope can be substituted for `'a` that will satisfy this signature.
+
+#### Thinking in Terms of Lifetimes
+* The way in which you need to specify lifetime parameters depends on what your function is doing. 
+* E.g. if we changed the implementation of the `longest()` function to always return the first parameter rather than the longest string slice, we wouldn’t need to specify a lifetime on the `y` parameter.
+  * The following code will compile: `fn longest<'a>(x: &'a str, y: &str) -> &'a str { x }`
+  * We’ve specified a lifetime parameter `'a` for the parameter `x` and the return type, but not for the parameter `y`, because the lifetime of `y` does not have any relationship with the lifetime of `x` or the return value as we always return `x`.
+* When returning a reference from a function, the lifetime parameter for the return type needs to match the lifetime parameter for one of the parameters. 
+  * If the reference returned does not refer to one of the parameters, it must refer to a value created within this function. 
+  * However, this would be a dangling reference because the value will go out of scope at the end of the function. Like this:
+    * ```Rust
+      fn longest<'a>(x: &str, y: &str) -> &'a str {
+        let result = String::from("really long string");
+        result.as_str()
+      }
+      ```
+  * The problem is that `result` goes out of scope and gets cleaned up at the end of the `longest()` function resulting in a *dangling reference* not allowed by Rust.
+
+#### Lifetime Annotations in Struct Definitions
+* So far, the structs we’ve defined all hold owned types. 
+* We can define structs to hold references, but in that case we would need to add a lifetime annotation on every reference in the struct’s definition.
+  * ```Rust
+    // this means an instance of `ImportantExcerpt` cannot outlive the reference it holds in its `part` field
+    struct ImportantExcerpt<'a> {
+    ```
+
+#### Lifetime Elision
+* Every reference has a lifetime and you need to specify lifetime parameters for functions or structs that use references. 
+* The patterns programmed into Rust’s analysis of references are called the *lifetime elision rules*. 
+* These aren’t rules for programmers to follow; they’re a set of particular cases that the compiler will consider, and if your code fits these cases, you don’t need to write the lifetimes explicitly.
+* Like:
+  * ```Rust
+    fn first_word(s: &str) -> &str
+    // instead of the following in pre-1.0 Rust versions
+    fn first_word<'a>(s: &'a str) -> &'a str
+    ```
+* The elision rules don’t provide full inference. If Rust deterministically applies the rules but there is still ambiguity as to what lifetimes the references have, the compiler won’t guess what the lifetime of the remaining references should be. Instead, the compiler will give you an error that you can resolve by adding the lifetime annotations.
+* Lifetimes on function or method parameters are called *input lifetimes*, and lifetimes on return values are called *output lifetimes*.
+* The compiler uses three rules to figure out the lifetimes of the references when there aren’t explicit annotations.
+  * The first rule applies to input lifetimes, and the second and third rules apply to output lifetimes.
+  *  If the compiler gets to the end of the three rules and there are still references for which it can’t figure out lifetimes, the compiler will stop with an error.
+  *  These rules apply to `fn` definitions as well as `impl` blocks.
+  *  Rules:
+     1. The compiler assigns a lifetime parameter to each parameter that’s a reference. In other words, a function with one parameter gets one lifetime parameter: `fn foo<'a>(x: &'a i32);` a function with two parameters gets two separate lifetime parameters: `fn foo<'a, 'b>(x: &'a i32, y: &'b i32);` and so on.
+     2. If there is exactly one input lifetime parameter, that lifetime is assigned to all output lifetime parameters: `fn foo<'a>(x: &'a i32) -> &'a i32`.
+     3. The third rule is that, if there are multiple input lifetime parameters, but one of them is `&self` (or `&mut self` because this is a method), the lifetime of `self` is assigned to all output lifetime parameters. This rule makes methods much nicer to read and write because fewer symbols are necessary.
+* Examples:
+  * Compiler can apply all 3 rules to `fn first_word(s: &str) -> &str {`
+  * But it cannot apply rules 2 and 3 to `fn longest(x: &str, y: &str) -> &str {` so gives an error for the programmer to specify the lifetimes.
+
+#### Lifetime Annotations in Method Definitions
+* Lifetime names for struct fields always need to be declared after the `impl` keyword and then used after the struct’s name because those lifetimes are part of the struct’s type.
+* In method signatures inside the `impl` block, references might be tied to the lifetime of references in the struct’s fields, or they might be independent.
+* The lifetime elision rules often make it so that lifetime annotations aren’t necessary in method signatures.
+    ```Rust
+    // The lifetime parameter declaration after `impl` and its use after the type 
+    // name are required, but we’re not required to annotate the lifetime of the 
+    // reference to `self` because of the first elision rule.
+    impl<'a> ImportantExcerpt<'a> {
+      fn level(&self) -> i32 {
+        3
+      }
+    }
+
+    // Example where the third lifetime elision rule applies:
+    impl<'a> ImportantExcerpt<'a> {
+      fn announce_and_return_part(&self, announcement: &str) -> &str {
+        println!("Attention please: {announcement}");
+        self.part
+      }
+    }
+
+    // In example 2, there are two input lifetimes, so Rust applies the first 
+    // lifetime elision rule and gives both `&self` and announcement their own 
+    // lifetimes. Then, because one of the parameters is `&self`, the return type 
+    // gets the lifetime of `&self`, and all lifetimes have been accounted for.
+    ```
+#### The Static Lifetime
+* `'static` lifetimes denote that the affected reference can live for the entire duration of the program. 
+* All string literals have the 'static lifetime, which we can annotate like:
+  * ```Rust
+    let s: &'static str = "I have a static lifetime";
+    ```
+* The text of this string is stored directly in the program’s binary, which is always available.
+* Before specifying `'static` as the lifetime for a reference, think about whether the reference you have actually lives the entire lifetime of your program or not, and whether you want it to.
+  
+#### Generic Type Parameters, Trait Bounds, and Lifetimes Together
+* Syntax of specifying generic type parameters, trait bounds, and lifetimes all in one function:
+  ```Rust
+    use std::fmt::Display;
+
+    fn longest_with_an_accouncement<a', T>(
+      x: &'a str,
+      y: &'a str,
+      annoucement: T,
+    ) -> &'a str 
+    where
+      T: Display,
+    {
+      println!("Annoucement! I am {annoucement}");
+      if x.len() > y.len() {
+        x
+      }
+      else {
+        y
+      }
+    }
+    ```
+
+#### Summary
+* Generic type parameters let you apply the code to different types. 
+* Traits and trait bounds ensure that even though the types are generic, they’ll have the behavior the code needs. 
+* lifetime annotations ensure that this flexible code won’t have any dangling references.
+* And all of this analysis happens at compile time, which doesn’t affect runtime performance!

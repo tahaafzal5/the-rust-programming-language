@@ -1,4 +1,4 @@
-use aggregate::{Summary, Tweet};
+use aggregate::{notify, NewsArticle, Summary, Suspense, Tweet};
 
 fn find_largest<T: std::cmp::PartialOrd>(list: &[T]) -> &T {
     let mut largest = &list[0];
@@ -43,6 +43,19 @@ impl<X1, Y1> PointMultipleType<X1, Y1> {
     }
 }
 
+fn longest<'a>(string1: &'a str, string2: &'a str) -> &'a str {
+    if string1.len() > string2.len() {
+        string1
+    } else {
+        string2
+    }
+}
+
+#[derive(Debug)]
+struct ImportantExcerpt<'a> {
+    part: &'a str,
+}
+
 fn main() {
     println!("---------------------------------------------");
     println!("In Function Definitions");
@@ -79,5 +92,67 @@ fn main() {
         reply: false,
         retweet: true,
     };
-    println!("tweet summary: {}", tweet.summarize())
+    println!("1 new tweet: {}", tweet.summarize());
+
+    println!("---------------------------------------------");
+    println!("Default Implementations");
+    println!("Suspense with default implementation: {}", tweet.suspense());
+
+    println!("---------------------------------------------");
+    println!("Traits as Parameters");
+    let news = NewsArticle {
+        headline: String::from("This just in"),
+        location: String::from("Sioux Falls, SD"),
+        author: String::from("tahaafzal5"),
+        content: String::from("He is learning Rust!"),
+    };
+    notify(&news);
+
+    println!("---------------------------------------------");
+    println!("Preventing Dangling References with Lifetimes");
+    // won't compile because the value r is referring to (x),
+    // goes out of scope before we try to use it
+    // let r;
+    // {
+    //     let x = 5;
+    //     r = &x;
+    // }
+    // println!("r: {r}");
+
+    println!("---------------------------------------------");
+    println!("Generic Lifetimes in Functions");
+    let string1 = String::from("abcd");
+    let string2 = "xyz";
+    let result = longest(string1.as_str(), string2);
+    println!("The longest string is {result}");
+
+    // this example works b/c the values adhere to the constraints of the lifetimes
+    let string1 = String::from("dkaofjhf");
+    {
+        let string2 = String::from("xyz");
+        let result = longest(string1.as_str(), string2.as_str());
+        println!("The longest string is {result}");
+    }
+
+    // this example won't compile cause string2 doesn't live as long as string1
+    // let string1 = String::from("long string is long");
+    // let result;
+    // {
+    //     let string2 = String::from("xyz");
+    //     result = longest(string1.as_str(), string2.as_str());
+    // }
+    // println!("The longest string is {result}");
+
+    println!("---------------------------------------------");
+    println!("Lifetime Annotations in Struct Definitions");
+    let novel = String::from("Call me Taha. Once upon a time...");
+    let first_sentence = novel.split('.').next().expect("Could not find '.'");
+    let i = ImportantExcerpt {
+        part: first_sentence,
+    };
+    println!("{:?}", i.part);
+
+    println!("---------------------------------------------");
+    println!("Lifetime Elision");
+    
 }
