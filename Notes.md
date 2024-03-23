@@ -145,6 +145,23 @@
     - [The tests Directory](#the-tests-directory)
     - [Submodules in Integration Tests](#submodules-in-integration-tests)
     - [Integration Tests for Binary Crates](#integration-tests-for-binary-crates)
+- [Chapter 12](#chapter-12)
+    - [Reading the Argument Values](#reading-the-argument-values)
+    - [Separation of Concerns for Binary Projects](#separation-of-concerns-for-binary-projects)
+    - [Developing the Library’s Functionality with Test-Driven Development](#developing-the-librarys-functionality-with-test-driven-development)
+    - [Fixing the Error Handling](#fixing-the-error-handling)
+      - [Returning a Result Instead of Calling panic!](#returning-a-result-instead-of-calling-panic)
+      - [Calling Config::build and Handling Errors](#calling-configbuild-and-handling-errors)
+    - [Extracting Logic from main](#extracting-logic-from-main)
+      - [Handling Errors Returned from run in main](#handling-errors-returned-from-run-in-main)
+    - [Splitting Code into a Library Crate](#splitting-code-into-a-library-crate)
+    - [Developing the Library’s Functionality with Test- Driven Development](#developing-the-librarys-functionality-with-test--driven-development)
+      - [Writing a Failing Test](#writing-a-failing-test)
+      - [Working with Environment Variables](#working-with-environment-variables)
+      - [Implementing the search\_case\_insensitive Function](#implementing-the-search_case_insensitive-function)
+    - [Writing Error Messages to Standard Error Instead of Standard Output](#writing-error-messages-to-standard-error-instead-of-standard-output)
+    - [Checking Where Errors Are Written](#checking-where-errors-are-written)
+    - [Printing Errors to Standard Error](#printing-errors-to-standard-error)
 
 # Introduction
 
@@ -1443,3 +1460,90 @@ overriding implementation of that same method.**
 ### Integration Tests for Binary Crates
 * If our project is a binary crate that only contains a *src/main.rs* file and doesn’t have a *src/lib.rs* file, we can’t create integration tests in the tests directory and bring functions defined in the *src/main.rs* file into scope with a `use` statement. 
 * Only library crates expose functions that other crates can use; binary crates are meant to be run on their own.
+
+# Chapter 12
+
+### Reading the Argument Values
+* To enable `minigrep` to read the values of command line arguments we pass to it, we’ll need the `std::env::args` function provided in Rust’s standard library.
+* This function returns an iterator of the command line arguments passed to `minigrep`, and we can call the `collect` method on an iterator to turn it into a collection, such as a vector.
+* We can use the `collect` function to create many kinds of collections, so we explicitly annotate the type of `args` to specify that we want a vector of strings.
+
+### Separation of Concerns for Binary Projects
+* The Rust community has developed guidelines for splitting the separate concerns of a binary program when main starts getting large. This process has the following steps:
+  * Split your program into a main.rs file and a lib.rs file and move your program’s logic to lib.rs.
+  * As long as your command line parsing logic is small, it can remain in main.rs.
+  * When the command line parsing logic starts getting complicated, extract it from main.rs and move it to lib.rs.
+  * The responsibilities that remain in the `main` function after this process should be limited to the following:
+    * Calling the command line parsing logic with the argument values
+    * Setting up any other configuration
+    * Calling a `run` function in lib.rs
+    * Handling the error if `run` returns an error
+* This pattern is about separating concerns: main.rs handles running the program and lib.rs handles all the logic of the task at hand. 
+* Because you can’t test the `main` function directly, this structure lets you test all of your program’s logic by moving it into functions in lib.rs. 
+* The code that remains in main.rs will be small enough to verify its correctness by reading it.
+
+### Developing the Library’s Functionality with Test-Driven Development
+* Test-driven development (TDD) process is the following steps:
+  * Write a test that fails and run it to make sure it fails for the reason you expect.
+  * Write or modify just enough code to make the new test pass.
+  * Refactor the code you just added or changed and make sure the tests continue to pass.
+  * Repeat from step 1!
+  
+### Fixing the Error Handling
+#### Returning a Result Instead of Calling panic!
+* Instead of `panic`, we can return a `Result` value that will contain a `Config` instance in the successful case and will describe the problem in the error case.
+* We’re also going to change the function name from `new` to `build` because many programmers expect `new` functions to never fail.
+* When `Config::build` is communicating to `main`, we can use the `Result` type to signal there was a problem.
+* Then we can change `main` to convert an `Err` variant into a more practical error for our users without the surrounding text about thread `'main'` and `RUST_BACKTRACE` that a call to `panic!` causes.
+
+#### Calling Config::build and Handling Errors
+*  Using `unwrap_or_else` allows us to define some custom, non-panic! error handling. 
+*  If the `Result` is an `Ok` value, this method’s behavior is similar to `unwrap`: it returns the inner value that `Ok` is wrapping. 
+*  However, if the value is an `Err` value, this method calls the code in the closure, which is an anonymous function we define and pass as an argument to `unwrap_or_else`.
+  
+### Extracting Logic from main
+#### Handling Errors Returned from run in main
+* We use `if let` rather than `unwrap_or_else` to check whether run returns an `Err` value and to call `process::exit(1)` if it does. 
+* The `run` function doesn’t return a value that we want to unwrap in the same way that `Config::build` returns the `Config` instance. 
+* Because `run` returns `()` in the success case, we only care about detecting an error, so we don’t need `unwrap_or_else` to return the unwrapped value, which would only be `()`.
+
+### Splitting Code into a Library Crate
+* We split the *src/main.rs* file and put some code into the *src/lib.rs* file.
+* That way, we can test the code and have a *src/main.rs* file with fewer responsibilities.
+
+### Developing the Library’s Functionality with Test- Driven Development
+#### Writing a Failing Test
+* Notice that we need to define an explicit lifetime `'a` in the signature of `search` and use that lifetime with the `contents` argument and the return value. 
+* The lifetime parameters specify which argument lifetime is connected to the lifetime of the return value. 
+* In this case, we indicate that the returned vector should contain string slices that reference slices of the argument `contents` (rather than the argument `query`).
+* In other words, we tell Rust that the data returned by the `search` function will live as long as the data passed into the `search` function in the `contents` argument. 
+* This is important! The data referenced by a slice needs to be valid for the reference to be valid; if the compiler assumes we’re making string slices of `query` rather than `contents`, it will do its safety checking incorrectly.
+* Rust can’t possibly know which of the two arguments we need, so we need to tell it explicitly.
+* Because `contents` is the argument that contains all of our text and we want to return the parts of that text that match, we know `contents` is the argument that should be connected to the return value using the lifetime syntax.
+
+#### Working with Environment Variables
+* We’ll improve `minigrep` by adding an extra feature: an option for case-insensitive searching that the user can turn on via an environment variable. 
+* We could make this feature a command line option and require that users enter it each time they want it to apply, but by instead making it an environment variable, we allow our users to set the environment variable once and have all their searches be case insensitive in that terminal session.
+
+#### Implementing the search_case_insensitive Function
+* We use the `var` function from the `env` module to check to see if any value has been set for an environment variable named `IGNORE_CASE` like: `env::var("IGNORE_CASE").is_ok()`.
+* The `env::var` function returns a `Result` that will be the successful `Ok` variant that contains the value of the environment variable if the environment variable is set to any value. 
+* It will return the `Err` variant if the environment variable is not set.
+* We’re using the `is_ok` method on the `Result` to check whether the environment variable is set, which means the program should do a case-insensitive search. 
+* If the `IGNORE_CASE` environment variable isn’t set to anything, `is_ok` will return `false` and the program will perform a case-sensitive search.
+* We don’t care about the value of the environment variable, just whether it’s set or unset, so we’re checking `is_ok` rather than using `unwrap`, `expect`, or any of the other methods we’ve seen on `Result`.
+* We can set the environment variable while running the program like: `$ IGNORE_CASE=1 cargo run -- to poem.txt`.
+  
+### Writing Error Messages to Standard Error Instead of Standard Output
+* In most terminals, there are two kinds of output: standard output (`stdout`) for general information and standard error (`stderr`) for error messages. 
+* This distinction enables users to choose to direct the successful output of a program to a file but still print error messages to the screen.
+* The `println!` macro is only capable of printing to standard output.
+
+### Checking Where Errors Are Written
+* Command line programs are expected to send error messages to the standard error stream so we can still see error messages on the screen even if we redirect the standard output stream to a file.
+* We can use `>` to redirect `stdout` output from the terminal to a file.
+  
+### Printing Errors to Standard Error
+* The standard library provides the `eprintln!` macro that prints to the standard error stream.
+* We still use `>` to redirect output to a file, but all errors will be printed to the screen while any other output goes to the file.
+
