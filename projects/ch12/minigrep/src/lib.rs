@@ -14,7 +14,13 @@ impl Config {
 
         let query = args[1].clone();
         let file_path = args[2].clone();
-        let ignore_case = env::var("IGNORE_CASE").is_ok();
+        let mut ignore_case = env::var("IGNORE_CASE").is_ok();
+
+        // if both -i in the cmd line arguments and IGNORE_CASE
+        // environment variable are set, -i takes precedence
+        if args.len() == 4 && args[3] == "-i" {
+            ignore_case = true;
+        }
 
         Ok(Config {
             query,
