@@ -7,20 +7,28 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn build(args: &[String]) -> Result<Config, &str> {
-        if args.len() < 3 {
-            return Err("not enough arguments");
-        }
+    pub fn build(mut args: impl Iterator<Item = String>) -> Result<Config, &'static str> {
+        // to ignore the program name from args
+        args.next();
 
-        let query = args[1].clone();
-        let file_path = args[2].clone();
+        let query = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a query string"),
+        };
+
+        let file_path = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a file path"),
+        };
+
         let mut ignore_case = env::var("IGNORE_CASE").is_ok();
 
         // if both -i in the cmd line arguments and IGNORE_CASE
         // environment variable are set, -i takes precedence
-        if args.len() == 4 && args[3] == "-i" {
-            ignore_case = true;
-        }
+        ignore_case = match args.next() {
+            Some(arg) => arg == "-i",
+            _ => false,
+        };
 
         Ok(Config {
             query,
@@ -47,15 +55,22 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 }
 
 pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    let mut result = Vec::new();
+    // let mut result = Vec::new();
 
-    for line in contents.lines() {
-        if line.contains(query) {
-            result.push(line.trim());
-        }
-    }
+    // for line in contents.lines() {
+    //     if line.contains(query) {
+    //         result.push(line.trim());
+    //     }
+    // }
 
-    result
+    // The commented out way can be done like so using
+    // iterator adapter methods
+    contents
+        .lines()
+        .filter(|line| line.contains(query))
+        .collect()
+
+    // result
 }
 
 pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {

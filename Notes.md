@@ -176,6 +176,10 @@
     - [Methods That Consume the Iterator](#methods-that-consume-the-iterator)
     - [Methods That Produce Other Iterators](#methods-that-produce-other-iterators)
     - [Using Closures That Capture Their Environment](#using-closures-that-capture-their-environment)
+    - [Improving minigrep](#improving-minigrep)
+    - [Removing a clone Using an Iterator](#removing-a-clone-using-an-iterator)
+    - [Using Iterator Trait Methods Instead of Indexing](#using-iterator-trait-methods-instead-of-indexing)
+    - [Making Code Clearer with Iterator Adapters](#making-code-clearer-with-iterator-adapters)
     - [Choosing Between Loops and Iterators](#choosing-between-loops-and-iterators)
     - [Comparing Performance: Loops vs. Iterators](#comparing-performance-loops-vs-iterators)
 
@@ -1794,6 +1798,34 @@ overriding implementation of that same method.**
 * In the body of `shoes_in_size`, we call `into_iter` to create an iterator that takes ownership of the vector. Then we call `filter` to adapt that iterator into a new iterator that only contains elements for which the closure returns `true`.
 * The closure captures the `shoe_size` parameter from the environment and compares the value with each shoe’s size, keeping only shoes of the size specified. 
 * Finally, calling `collect` gathers the values returned by the adapted iterator into a vector that’s returned by the function.
+
+### Improving minigrep
+* With knowledge about iterators, we can use them in `Config::build` and `search` for clarity.
+
+### Removing a clone Using an Iterator
+* In minigrep, we added code that took a slice of String values and created an instance of the `Config` struct by indexing into the slice and cloning the values, allowing the `Config` struct to own those values.
+* We needed `clone` there because we have a slice with `String` elements in the parameter `args`, but the build function doesn’t own `args`. 
+* With our new knowledge about iterators, we can change the `build` function to take ownership of an iterator as its argument instead of borrowing a slice. 
+  * We’ll use the iterator functionality instead of the code that checks the length of the slice and indexes into specific locations.
+  * This will clarify what the `Config::build` function is doing because the iterator will access the values.
+  * Once `Config::build` takes ownership of the iterator and stops using indexing operations that borrow, we can move the `String` values from the iterator into `Config` rather than calling clone and making a new allocation.
+* The `env::args()` function returns an iterator.
+  * Rather than collecting the iterator values into a vector and then passing a slice to `Config::build`, now we’re passing ownership of the iterator returned from `env::args` to `Config::build` directly.
+  * We then need to change the signature of `Config::build`:
+    * `pub fn build(mut args: impl Iterator<Item = String>) -> Result<Config, &str> {` 
+    * We’ve updated the signature so the parameter `args` has a generic type with the trait bounds `impl Iterator<Item = String>` instead of `&[String]`.
+    * This usage of the `impl Trait` syntax means that `args` can be any type that implements the `Iterator` type and returns `String` items.
+    * Because we’re taking ownership of `args` and we’ll be mutating `args` by iterating over it, we can add the `mut` keyword into the specification of the `args` parameter to make it mutable.
+
+### Using Iterator Trait Methods Instead of Indexing
+* We need to fix the body of `Config::build`. Because `args` implements the `Iterator` trait, we know we can call the `next` method on it.
+
+### Making Code Clearer with Iterator Adapters
+* We can also take advantage of iterators in the search function in minigrep.
+* We can write the code in a more concise way using iterator adapter methods. 
+  * Doing so also lets us avoid having a mutable intermediate `results` vector. 
+  * The functional programming style prefers to minimize the amount of mutable state to make code clearer. 
+  * Removing the mutable state might enable a future enhancement to make searching happen in parallel because we wouldn’t have to manage concurrent access to the `results` vector.
 
 ### Choosing Between Loops and Iterators
 * Most Rust programmers prefer to use the iterator style. 
