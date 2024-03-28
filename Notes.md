@@ -1859,4 +1859,13 @@ overriding implementation of that same method.**
 * Rust knows that there are 12 iterations, so it *“unrolls”* the loop.
   * *Unrolling* is an optimization that removes the overhead of the loop controlling code and instead generates repetitive code for each iteration of the loop.
 * All of the coefficients get stored in registers, which means accessing the values is very fast. 
-* There are no bounds checks on the array access at runtime. All of these optimizations that Rust is able to apply make the resultant code extremely efficient.
+* There are no bounds checks on the array access at runtime. All of these optimizations that Rust is able to apply make the resultant code extremely efficient.<!-- BEFORE STARTING CHAPTER 14, DO ALL EXERCISES/PROJECTS DONE IN THIS BOOK MYSELF -->
+
+<!-- BEFORE STARTING CHAPTER 14, DO ALL EXERCISES/PROJECTS DONE IN THIS BOOK MYSELF -->
+
+<!-- All of these must be done with lib.rs and main.rs with unit and integration tests -->
+<!-- Looking at documentation online is fine -->
+<!-- No looking at previous implementations until after I am done -->
+
+<!-- ch3/f-to-c -->
+<!-- ch8/company-departments -->
