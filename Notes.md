@@ -1,13 +1,13 @@
 - [Introduction](#introduction)
-- [Chapter 1](#chapter-1)
+- [Ch1 - Getting Started](#ch1---getting-started)
     - [Installing Rust](#installing-rust)
     - [Intro to Cargo](#intro-to-cargo)
-- [Chapter 2](#chapter-2)
+- [Ch2 - Programming a Guessing Game](#ch2---programming-a-guessing-game)
     - [The `use` Statement](#the-use-statement)
     - [Cargo](#cargo)
     - [Match Expressions](#match-expressions)
     - [Shadowing](#shadowing)
-- [Chapter 3](#chapter-3)
+- [Ch3 - Common Programming Concepts](#ch3---common-programming-concepts)
     - [Variables](#variables)
     - [Constants](#constants)
     - [Shadowing](#shadowing-1)
@@ -20,7 +20,7 @@
     - [Comments](#comments)
     - [Control Flow](#control-flow)
     - [Loops](#loops)
-- [Chapter 4](#chapter-4)
+- [Ch4 - Understanding Ownership](#ch4---understanding-ownership)
     - [Ownership](#ownership)
     - [References](#references)
     - [Mutable References](#mutable-references)
@@ -28,14 +28,14 @@
     - [The Rules of References](#the-rules-of-references)
       - [The Slice Type](#the-slice-type)
       - [Other Slices](#other-slices)
-- [Chapter 5](#chapter-5)
+- [Ch5 - Using Structs to Structure Related Data](#ch5---using-structs-to-structure-related-data)
     - [Structs](#structs)
     - [Tuple Structs](#tuple-structs)
     - [Unit-Like Structs without Any Fields](#unit-like-structs-without-any-fields)
     - [Methods](#methods)
     - [Methods with more parameters](#methods-with-more-parameters)
     - [Associated Functions](#associated-functions)
-- [Chapter 6](#chapter-6)
+- [Ch6 - Enums and Pattern Matching](#ch6---enums-and-pattern-matching)
     - [Enums](#enums)
     - [Option Enum](#option-enum)
     - [The match Control Flow Construct](#the-match-control-flow-construct)
@@ -43,7 +43,7 @@
     - [Matching with `Option<T>`](#matching-with-optiont)
     - [Catch-All Patterns and the \_ Placeholder](#catch-all-patterns-and-the-_-placeholder)
     - [Concise Control Flow with if let](#concise-control-flow-with-if-let)
-- [Chapter 7](#chapter-7)
+- [Ch7 - Managing Growing Projects with Packages, Crates, and Modules](#ch7---managing-growing-projects-with-packages-crates-and-modules)
     - [Packages and Crates](#packages-and-crates)
     - [Defining Modules to Control Scope and Privacy](#defining-modules-to-control-scope-and-privacy)
     - [Paths for Referring to an item in a Module Tree](#paths-for-referring-to-an-item-in-a-module-tree)
@@ -55,7 +55,7 @@
     - [Using Nested Paths to Clean Up Large use Lists](#using-nested-paths-to-clean-up-large-use-lists)
     - [The Glob Operator](#the-glob-operator)
     - [Separating Modules into Different Files](#separating-modules-into-different-files)
-- [Chapter 8](#chapter-8)
+- [Ch8 - Common Collections](#ch8---common-collections)
   - [Vectors](#vectors)
     - [Storing Lists of Values with Vectors](#storing-lists-of-values-with-vectors)
     - [Updating a vector](#updating-a-vector)
@@ -81,7 +81,7 @@
     - [Overwriting a value](#overwriting-a-value)
     - [Adding a Key and Value Only if a Key Isn't Present](#adding-a-key-and-value-only-if-a-key-isnt-present)
     - [Updating a Value Based on the Old Value](#updating-a-value-based-on-the-old-value)
-- [Chapter 9](#chapter-9)
+- [Ch9 - Error Handling](#ch9---error-handling)
     - [Unrecoverable Errors with panic!](#unrecoverable-errors-with-panic)
     - [Recoverable Errors with Result](#recoverable-errors-with-result)
     - [Matching on Different Errors](#matching-on-different-errors)
@@ -93,7 +93,7 @@
     - [To panic! or Not to panic!](#to-panic-or-not-to-panic)
     - [Guidelines for Error Handling](#guidelines-for-error-handling)
     - [Creating Custom Types for Validation](#creating-custom-types-for-validation)
-- [Chapter 10](#chapter-10)
+- [Ch10 - Generic Types, Traits, and Lifetimes](#ch10---generic-types-traits-and-lifetimes)
     - [Removing Duplication by Extracting a Function](#removing-duplication-by-extracting-a-function)
     - [Generic Data Types](#generic-data-types)
       - [In Function Definitions](#in-function-definitions)
@@ -124,7 +124,7 @@
       - [The Static Lifetime](#the-static-lifetime)
       - [Generic Type Parameters, Trait Bounds, and Lifetimes Together](#generic-type-parameters-trait-bounds-and-lifetimes-together)
       - [Summary](#summary)
-- [Chapter 11](#chapter-11)
+- [Ch11 - Writing Automated Tests](#ch11---writing-automated-tests)
     - [How to Write Tests](#how-to-write-tests)
     - [The Anatomy of a Test Function](#the-anatomy-of-a-test-function)
     - [Checking Results with the `assert!` Macro](#checking-results-with-the-assert-macro)
@@ -145,7 +145,7 @@
     - [The tests Directory](#the-tests-directory)
     - [Submodules in Integration Tests](#submodules-in-integration-tests)
     - [Integration Tests for Binary Crates](#integration-tests-for-binary-crates)
-- [Chapter 12](#chapter-12)
+- [Ch12 - An I/O Project: Building a Command Line Program](#ch12---an-io-project-building-a-command-line-program)
     - [Reading the Argument Values](#reading-the-argument-values)
     - [Separation of Concerns for Binary Projects](#separation-of-concerns-for-binary-projects)
     - [Developing the Library’s Functionality with Test-Driven Development](#developing-the-librarys-functionality-with-test-driven-development)
@@ -162,7 +162,7 @@
     - [Writing Error Messages to Standard Error Instead of Standard Output](#writing-error-messages-to-standard-error-instead-of-standard-output)
     - [Checking Where Errors Are Written](#checking-where-errors-are-written)
     - [Printing Errors to Standard Error](#printing-errors-to-standard-error)
-- [Chapter 13](#chapter-13)
+- [Ch13 - Functional Language Features: Iterators and Closures](#ch13---functional-language-features-iterators-and-closures)
   - [Closures](#closures)
     - [Closures: Anonymous Functions That Capture Their Environment](#closures-anonymous-functions-that-capture-their-environment)
     - [Capturing the Environment with Closures](#capturing-the-environment-with-closures)
@@ -182,7 +182,7 @@
     - [Making Code Clearer with Iterator Adapters](#making-code-clearer-with-iterator-adapters)
     - [Choosing Between Loops and Iterators](#choosing-between-loops-and-iterators)
     - [Comparing Performance: Loops vs. Iterators](#comparing-performance-loops-vs-iterators)
-- [Chapter 14](#chapter-14)
+- [Ch14 - More About Cargo and Crates.io](#ch14---more-about-cargo-and-cratesio)
   - [Customizing Builds with Release Profiles](#customizing-builds-with-release-profiles)
   - [Publishing a Crate to Crates.io](#publishing-a-crate-to-cratesio)
     - [Making Useful Documentation Comments](#making-useful-documentation-comments)
@@ -218,7 +218,7 @@
 * Clippy is Rust's static analyzer.
 * `cargo fix` automatically upgrades your code to a new edition.
 
-# Chapter 1
+# Ch1 - Getting Started
 
 ### Installing Rust
 * The version of curl that is installed by homebrew does not support the `-tls` option, so removing it from the default rust install command line fixed the error: "curl: (4) A requested feature, protocol or option was not found built-in in this libcurl due to a build-time decision." 
@@ -234,7 +234,7 @@
 * We can build a project without producing a binary to check for errors using `cargo check`.
 * Instead of saving the result of the build in the same directory as our code, Cargo stores it in the target/debug directory.
 
-# Chapter 2
+# Ch2 - Programming a Guessing Game
 
 ### The `use` Statement
 * By default, Rust has a set of items defined in the standard library that it brings into the scope of every program. This set is called the prelude.
@@ -254,7 +254,7 @@
 ### Shadowing
 * Rust allows us to shadow/reuse variable names rather than forcing us to create two unique variables.
 
-# Chapter 3
+# Ch3 - Common Programming Concepts
 
 ### Variables
 * Variables are immutable by default and the `mut` keyword can be used to make them mutable.
@@ -368,7 +368,7 @@
   * conditional loop
   * loop through a collection like an array. We can do this using `while` as we check for the index being <= our array's length, but `for` is cleaner, better, and safer.
 
-# Chapter 4
+# Ch4 - Understanding Ownership
 
 ### Ownership
 * Memory in Rust is managed through a system of ownership with a set of rules that the compiler enforces.
@@ -447,7 +447,7 @@
       let slice = &a[0..2]; // slice will be [1,2] and of type &[i32]
       ```
 
-# Chapter 5
+# Ch5 - Using Structs to Structure Related Data
 
 ### Structs
 * Structs allow us to structure custom, related values into a meaningful group.
@@ -530,7 +530,7 @@
 * We can define associated functions that don't have `self` as their first parameter (and thus not methods) because they don't need an instance of the type to work with.
 * Associated functions that aren't methods are often used for constructors that will use a create instance of the struct.
 
-# Chapter 6
+# Ch6 - Enums and Pattern Matching
 
 ### Enums
 * Enums allow you to define a type by enumerating its possible variants. It is a way of saying that a value is a one of a possible set of values.
@@ -583,7 +583,7 @@
 * `if let` means less boilerplate code, but we lose `match`'s exhaustive checking.
 * We can think of `if let` that runs code when the value matches one pattern and ignores all other values.
 
-# Chapter 7
+# Ch7 - Managing Growing Projects with Packages, Crates, and Modules
 
 * As our project grows, you should organize it by splitting it into multiple modules and then multiple files.
 * A package can contain multiple binary crates and optionally one library crate.
@@ -680,9 +680,8 @@
 * Since `hosting` and `serving` are childs of `front_of_house`, we put them in a directory `src/front_of_house`.
 * The compiler's rules for which files to check for which modules' code mean the directories and files more closely match the module tree.
 
-# Chapter 8
+# Ch8 - Common Collections
 * The data that collections point to is stored on the heap.
-
 
 ## Vectors
 
@@ -807,7 +806,7 @@
 ### Updating a Value Based on the Old Value
 * See main.rs.
 
-# Chapter 9
+# Ch9 - Error Handling
 * In many cases Rust requires you to acknowledge the possibility of an error and take some action before your code will compile.
 * Rust groups errors into two major categories: recoverable and unrecoverable errors.
   * For recoverable errors, we most likely want to report the problem to the user and retry the operation.
@@ -933,7 +932,7 @@
 * We can make a new type and put the validations in a function to create an instance of the type rather than repeating the validations everywhere. That way, it’s safe for functions to use the new type in their signatures and confidently use the values they receive.
 * Look at `Guess`' implementation in src/main.rs.
 
-# Chapter 10
+# Ch10 - Generic Types, Traits, and Lifetimes
 * Generic functions differ in the types of their parameters so we can run the same code on multiple concrete values.
 * Traits are used to define behavior in a generic way. You can combine traits with generic types to constrain a generic type to accept only those types that have a particular behavior, as opposed to just any type.
 * Lifetimes allow us to give the compiler enough information about borrowed values so that it can ensure references will be valid in more situations than it could without our help.
@@ -1350,7 +1349,7 @@ overriding implementation of that same method.**
 * lifetime annotations ensure that this flexible code won’t have any dangling references.
 * And all of this analysis happens at compile time, which doesn’t affect runtime performance!
 
-# Chapter 11
+# Ch11 - Writing Automated Tests
 
 ### How to Write Tests
 * The bodies of test functions typically perform these three actions:
@@ -1501,7 +1500,7 @@ overriding implementation of that same method.**
 * If our project is a binary crate that only contains a *src/main.rs* file and doesn’t have a *src/lib.rs* file, we can’t create integration tests in the tests directory and bring functions defined in the *src/main.rs* file into scope with a `use` statement. 
 * Only library crates expose functions that other crates can use; binary crates are meant to be run on their own.
 
-# Chapter 12
+# Ch12 - An I/O Project: Building a Command Line Program
 
 ### Reading the Argument Values
 * To enable `minigrep` to read the values of command line arguments we pass to it, we’ll need the `std::env::args` function provided in Rust’s standard library.
@@ -1587,7 +1586,7 @@ overriding implementation of that same method.**
 * The standard library provides the `eprintln!` macro that prints to the standard error stream.
 * We still use `>` to redirect output to a file, but all errors will be printed to the screen while any other output goes to the file.
 
-# Chapter 13
+# Ch13 - Functional Language Features: Iterators and Closures
 * Rust has some features that are similar to features in functional programming languages, like:
   * Closures: a function-like construct you can store in a variable
   * Iterators: a way of processing a series of elements
@@ -1881,7 +1880,7 @@ overriding implementation of that same method.**
 * All of the coefficients get stored in registers, which means accessing the values is very fast. 
 * There are no bounds checks on the array access at runtime. All of these optimizations that Rust is able to apply make the resultant code extremely efficient.
 
-# Chapter 14
+# Ch14 - More About Cargo and Crates.io
 
 ## Customizing Builds with Release Profiles
 * Cargo has two main profiles: the `dev` profile Cargo uses when you run `cargo build`, and the `release` profile Cargo uses when you run `cargo build --release`. 
