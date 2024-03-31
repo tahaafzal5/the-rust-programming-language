@@ -374,9 +374,9 @@
 * Memory in Rust is managed through a system of ownership with a set of rules that the compiler enforces.
 * Keeping track of what parts of code are using what data on the heap, minimizing the amount of duplicate data on the heap, and cleaning up unused data on the heap so we don't run out of space are all problems that ownership addresses.
 * Rules:
-  * Each value in Rust has an owner
-  * There can only be one owner at a time
-  * When the owner goes out of scope, the value will be dropped
+  1. Each value in Rust has an owner
+  2. There can only be one owner at a time
+  3. When the owner goes out of scope, the value will be dropped
 * `String` type can be mutated but String literals cannot and that is because of the difference in how these two types deal with memory (stack vs heap).
   * When the size of a string is known as compile time, like literals, they are hardcoded in the final executable, so their size cannot change.
   * When the size of a String is unknown at compile time and can change during the program's execution, they are allocated on the heap during runtime.
