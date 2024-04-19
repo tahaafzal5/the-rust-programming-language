@@ -248,6 +248,23 @@
     - [Allowing Transference of Ownership Between Threads with Send](#allowing-transference-of-ownership-between-threads-with-send)
     - [Allowing Access from Multiple Threads with Sync](#allowing-access-from-multiple-threads-with-sync)
     - [Implementing Send and Sync Manually Is Unsafe](#implementing-send-and-sync-manually-is-unsafe)
+- [Ch17 - Object-Oriented Programming Features](#ch17---object-oriented-programming-features)
+  - [Characteristics of Object-Oriented Languages](#characteristics-of-object-oriented-languages)
+    - [Objects Contain Data and Behavior](#objects-contain-data-and-behavior)
+    - [Encapsulation That Hides Implementation Details](#encapsulation-that-hides-implementation-details)
+    - [Inheritance as a Type System and as Code Sharing](#inheritance-as-a-type-system-and-as-code-sharing)
+  - [Using Trait Objects That Allow for Values of Different Types](#using-trait-objects-that-allow-for-values-of-different-types)
+    - [Defining a Trait for Common Behavior](#defining-a-trait-for-common-behavior)
+    - [Implementing the Trait](#implementing-the-trait)
+    - [Trait Objects Perform Dynamic Dispatch](#trait-objects-perform-dynamic-dispatch)
+  - [Implementing an Object-Oriented Design Pattern](#implementing-an-object-oriented-design-pattern)
+    - [Defining Post and Creating a New Instance in the Draft State](#defining-post-and-creating-a-new-instance-in-the-draft-state)
+    - [Storing the Text of the Post Content](#storing-the-text-of-the-post-content)
+    - [Ensuring the Content of a Draft Post Is Empty](#ensuring-the-content-of-a-draft-post-is-empty)
+    - [Requesting a Review Changes the Post’s State](#requesting-a-review-changes-the-posts-state)
+    - [Trade-offs of the State Pattern](#trade-offs-of-the-state-pattern)
+    - [Encoding States and Behavior as Types](#encoding-states-and-behavior-as-types)
+      - [Implementing Transitions as Transformations into Different Types](#implementing-transitions-as-transformations-into-different-types)
 
 # Introduction
 
@@ -2690,3 +2707,217 @@ overriding implementation of that same method.**
 * As marker traits, they don’t even have any methods to implement. They’re just useful for enforcing invariants related to concurrency.
 * Manually implementing these traits involves implementing unsafe Rust code.
 * Building new concurrent types not made up of `Send` and `Sync` parts requires careful thought to uphold the safety guarantees.
+
+# Ch17 - Object-Oriented Programming Features
+
+## Characteristics of Object-Oriented Languages
+* While there is no consensus in the programming community about what features a language must have to be considered object oriented, OOP languages share certain common characteristics, namely objects, encapsulation, and inheritance.
+
+### Objects Contain Data and Behavior
+* Object-oriented programs are made up of objects. An **object** packages both data and the procedures that operate on that data. The procedures are typically called **methods** or **operations**.
+* Using this definition, Rust is object oriented: structs and enums have data, and `impl` blocks provide methods on structs and enums.
+* Even though structs and enums with methods aren’t called objects, they provide the same functionality.
+
+### Encapsulation That Hides Implementation Details
+* Another aspect commonly associated with OOP is the idea of *encapsulation*, which means that the implementation details of an object aren’t accessible to code using that object.
+* Therefore, the only way to interact with an object is through its public API; code using the object shouldn’t be able to reach into the object’s internals and change data or behavior directly.
+* This enables the programmer to change and refactor an object’s internals without needing to change the code that uses the object.
+* In Rust, we can use the `pub` keyword to decide which modules, types, functions, and methods in our code should be public, and by default everything else is private.
+
+### Inheritance as a Type System and as Code Sharing
+* *Inheritance* is a mechanism whereby an object can inherit elements from another object’s definition, thus gaining the parent object’s data and behavior without you having to define them again.
+* There is no way to define a struct that inherits the parent struct’s fields and method implementations without using a macro.
+* You would choose inheritance for two main reasons:
+  1. For reuse of code: you can implement particular behavior for one type, and inheritance enables you to reuse that implementation for a different type. You can do this in a limited way in Rust code using default trait method implementations as when we added a default implementation of the `summarize` method on the `Summary` trait. Any type implementing the `Summary` trait would have the `summarize` method available on it without any further code. This is similar to a parent class having an implementation of a method and an inheriting child class also having the implementation of the method. We can also override the default implementation of the `summarize` method when we implement the `Summary` trait, which is similar to a child class overriding the implementation of a method inherited from a parent class.
+  2. The type system: to enable a child type to be used in the same places as the parent type. This is called *polymorphism*, which means that you can substitute multiple objects for each other at runtime if they share certain characteristics. Rust instead uses generics to abstract over different possible types and trait bounds to impose constraints on what those types must provide. This is sometimes called *bounded parametric polymorphism*.
+
+## Using Trait Objects That Allow for Values of Different Types
+* To implement a gui library to draw things that we don't fully know what they could be, in a language with inheritance, we might define a class named `Component` that has a method named `draw` on it.
+* The other classes, such as `Button`, `Image`, and `SelectBox`, would inherit from `Component` and thus inherit the `draw` method.
+* They could each override the `draw` method to define their custom behavior, but the framework could treat all of the types as if they were `Component` instances and call `draw` on them.
+* But because Rust doesn’t have inheritance, we need another way to structure the gui library to allow users to extend it with new types.
+
+### Defining a Trait for Common Behavior
+* In Rust, we can have a trait named `Draw` with one method called `draw`.
+* Then we can define a vector that takes a trait object.
+  * A *trait* object points to both an instance of a type implementing our specified trait and a table used to look up trait methods on that type at runtime.
+  * Trait objects differ from traditional objects in that we can’t add data to a trait object.
+  * We define a trait using the `trait` keyword followed by the trait name and specifying any methods for that trait inside `{}`.
+  * We create a trait object by specifying some sort of pointer, such as an `&` reference or a `Box<T>` smart pointer, then the `dyn` keyword, and then specifying the relevant trait.
+  * We can use trait objects in place of a generic or concrete type.
+  * Wherever we use a trait object, Rust’s type system will ensure at compile time that any value used in that context will implement the trait object’s trait.
+  * Consequently, we don’t need to know all the possible types at compile time.
+  * ```Rust
+      // Defining the `Draw` trait
+      pub trait Draw {
+        fn draw(&self);
+      }
+
+      // Defining of a struct `Screen` with a `components` field holding a vector of 
+      // trait objects that implement the `Draw` trait.
+      // This vector is of type `Box<dyn Draw>`, which is a trait object; it’s a stand-in
+      // for any type inside a `Box` that implements the `Draw` trait.
+      pub struct Screen {
+        pub components: Vec<Box<dyn Draw>>,
+      }
+
+      impl Screen {
+        pub fn run(&self) {
+            for compnent in self.components.iter() {
+                compnent.draw();
+            }
+        }
+    }
+    ```
+* The above code is different from defining a struct that uses a generic type parameter with trait bounds.
+  * A generic type parameter can be substituted with **only one** concrete type at a time, whereas trait objects allow for multiple concrete types to fill in for the trait object at runtime.
+    * ```Rust
+      // An **alternate** implementation of the Screen struct and its run method using
+      // generics and trait bounds
+      pub struct Screen<T: Draw> {
+        pub components: Vec<T>,
+      }
+      
+      impl<T> Screen<T>
+      where
+        T: Draw,
+      {
+        pub fn run(&self) {
+          for component in self.components.iter() {
+              component.draw();
+          }
+        }
+      }
+      ```
+* **Important:** The differences in the above:
+  * This restricts us to a `Screen` instance that has a list of components all of type `Button` or all of type `TextField`. If you’ll only ever have homogeneous collections, using generics and trait bounds is preferable because the definitions will be monomorphized at compile time to use the concrete types.
+  * On the other hand, with the method using trait objects, one `Screen` instance can hold a `Vec<T>` that contains a `Box<Button>` as well as a `Box<TextField>`.
+
+### Implementing the Trait
+  * ```Rust
+      pub struct Button {
+        length: u32,
+        width: u32,
+        label: String,
+      }
+
+      impl Draw for Button {
+        fn draw(&self) {
+            println!("Drawing button");
+        }
+      }
+
+      fn main() {
+        let screen = Screen {
+            components: vec![
+              // IMPORTANT - how to use Box<T>
+              Box::new(Button {
+                  length: 30,
+                  width: 10,
+                  label: String::from("Click Me!"),
+              }),
+              // IMPORTANT - can have different types as long as they implement the Draw trait
+              Box::new(SelectBox {
+                  width: 30,
+                  height: 10,
+                  options: vec![String::from("1"), String::from("2")],
+              }),
+            ],
+        };
+      }
+    ```
+* The advantage of using trait objects and Rust’s type system is that we never have to check whether a value implements a particular method at runtime or worry about getting errors if a value doesn’t implement a method but we call it anyway. 
+* Rust won’t compile our code if the values don’t implement the traits that the trait objects need.
+
+### Trait Objects Perform Dynamic Dispatch
+* When we use trait bounds on generics the compiler generates non-generic implementations of functions and methods for each concrete type that we use in place of a generic type parameter.
+  * The code that results from monomorphization is doing *static dispatch*, which is when the compiler knows what method you’re calling at compile time.
+* This is opposed to *dynamic dispatch*, which is when the compiler can’t tell at compile time which method you’re calling and is used for trait objects. 
+  * In dynamic dispatch cases, the compiler emits code that at runtime will figure out which method to call.
+  * At runtime, Rust uses the pointers inside the trait object to know which method to call.
+  * This lookup incurs a **runtime cost** that doesn’t occur with static dispatch.
+  * Dynamic dispatch also prevents the compiler from choosing to inline a method’s code, which in turn prevents some optimizations.
+
+## Implementing an Object-Oriented Design Pattern
+* The *state pattern* is an object-oriented design pattern.
+* The crux of the pattern is that we define a set of states a value can have internally.
+* The states are represented by a set of state objects, and the value’s behavior changes based on its state.
+* The state objects share functionality: in Rust, we use structs and traits rather than objects and inheritance.
+* Each state object is responsible for its own behavior and for governing when it should change into another state.
+* The value that holds a state object knows nothing about the different behavior of the states or when to transition between states.
+* The advantage of using the state pattern is that, when the business requirements of the program change, we won’t need to change the code of the value holding the state or the code that uses the value. We’ll only need to update the code inside one of the state objects to change its rules or add more state objects.
+
+### Defining Post and Creating a New Instance in the Draft State
+* When we create a new `Post`, we set its `state` field to a `Some` value that holds a `Box`.
+* This `Box` points to a new instance of the `Draft` struct. This ensures that whenever we create a new instance of `Post`, it will start out as a draft.
+
+### Storing the Text of the Post Content
+* The `add_text` method doesn’t interact with the state field at all.
+
+### Ensuring the Content of a Draft Post Is Empty
+* Even after we’ve called `add_text` and added some content to our post, we still want the `content` method to return an empty string slice because the post is still in the draft state.
+
+### Requesting a Review Changes the Post’s State
+* We give `Post` a public method named `request_review` that will take a mutable reference to `self`. 
+* Then we call an internal `request_review` method on the current state of `Post`, and this `request_review` method consumes the current state and returns a new state.
+* We add the `request_review` method to the `State` trait; all types that implement the trait will now need to implement the `request_review` method.
+* Rather than having `self`, `&self`, or `&mut self` as the first parameter of the method, we have `self: Box<Self>`.
+  * This syntax means the method is only valid when called on a `Box` holding the type.
+  * This syntax takes ownership of `Box<Self>`, invalidating the old state so the state value of the `Post` can transform into a new state.
+* To consume the old state, the `request_review` method needs to take ownership of the state value.
+  * This is where the `Option` in the state field of `Post` comes in: we call the `take` method to take the `Some` value out of the state field and leave a `None` in its place because Rust doesn’t let us have unpopulated fields in structs.
+  * This lets us move the state value out of `Post` rather than borrowing it.
+  * Then we’ll set the post’s state value to the result of this operation.
+  * We need to set state to `None` temporarily rather than setting it directly with code like `self.state = self.state.request_review()` to get ownership of the state value. This ensures `Post` can’t use the old state value after we’ve transformed it into a new state.
+* The `request_review` method on `Draft` returns a new, boxed instance of a new `PendingReview` struct, which represents the state when a post is waiting for a review.
+* The `PendingReview` struct also implements the `request_review` method but doesn’t do any transformations. 
+  * Rather, it returns itself because when we request a review on a post already in the `PendingReview` state, it should stay in the `PendingReview` state.
+* The advantage of the state pattern: the `request_review` method on `Post` is the same no matter its state value. Each state is responsible for its own rules.
+* We need to update the `content` method on `Post`.
+  * We want the value returned from `content` to depend on the current state of the `Post`, so we’re going to have the `Post` delegate to a `content` method defined on its state like:
+    * ```Rust
+        pub fn content(&self) -> &str {
+          self.state.as_ref().unwrap().content(self)
+        }
+      ```
+* Because the goal is to keep all of these rules inside the structs that implement `State`, we call a `content` method on the value in state and pass the post instance (that is, `self`) as an argument.
+  * Then we return the value that’s returned from using the `content` method on the state value.
+  * We call the `as_ref` method on the `Option` because we want a reference to the value inside the `Option` rather than ownership of the value.
+  * We add a default implementation for the `content` method that returns an empty string slice. That means we don’t need to implement content on the `Draft` and `PendingReview` structs.
+  * The `Published` struct will override the `content` method and return the value in `post.content`.
+  * Note that we need lifetime annotations on the `content` method since we are taking a reference to a post as an argument and returning a reference to part of that post, so the lifetime of the returned reference is related to the lifetime of the post argument.
+* Using enums as state variants is one way of implementing this but it would result in a lot of repetition wherever we need to check the value of the enum.
+  * With the state pattern, the `Post` methods and the places we use `Post` don’t need `match` expressions, and to add a new state, we would only need to add a new struct and implement the trait methods on that one struct.
+
+### Trade-offs of the State Pattern
+* One downside of the state pattern is that, because the states implement the transitions between states, some of the states are coupled to each other.
+  * If we add another state between `PendingReview` and `Published`, such as `Scheduled`, we would have to change the code in `PendingReview` to transition to `Scheduled` instead.
+  * It would be less work if `PendingReview` didn’t need to change with the addition of a new state.
+* Another downside is that we’ve duplicated some logic. 
+  * To eliminate some of the duplication, we might try to make default implementations for the `request_review` and `approve` methods on the `State` trait that return `self`.
+  * However, this wouldn’t work: when using `State` as a trait object, the trait doesn’t know what the concrete self will be exactly, so the return type isn’t known at compile time.
+* Other duplication includes the similar implementations of the `request_review` and `approve` methods on `Post`.
+  * Both methods delegate to the implementation of the same method on the value in the state field of `Option` and set the new value of the state field to the result.
+  * If we had a lot of methods on `Post` that followed this pattern, we might consider defining a macro to eliminate the repetition.
+* By implementing the state pattern exactly as it’s defined for object-oriented languages, we’re not taking as full advantage of Rust’s strengths as we could.
+
+### Encoding States and Behavior as Types
+* We will now rethink the state pattern to get a different set of trade-offs.
+* Rather than encapsulating the states and transitions completely so outside code has no knowledge of them, we’ll encode the states into different types.
+* Consequently, Rust’s type checking system will prevent attempts to use draft posts where only published posts are allowed by issuing a compiler error.
+* Instead of having a `content` method on a draft post that returns an empty string, we’ll make it so draft posts don’t have the `content` method at all.
+  * That way, if we try to get a draft post’s content, we’ll get a compiler error telling us the method doesn’t exist.
+  * As a result, it will be impossible for us to accidentally display draft post content in production because that code won’t even compile.
+* Both the `Post2` and `DraftPost` structs have a private `content` field that stores the blog post text.
+* The structs no longer have the `state` field because we’re moving the encoding of the state to the types of the structs.
+* The `Post2` struct will represent a published post, and it has a `content` method that returns the content.
+* We still have a `Post2::new` function, but instead of returning an instance of `Post2`, it returns an instance of `DraftPost`.
+* Because `content` is private and there aren’t any functions that return `Post2`, it’s not possible to create an instance of `Post2` right now.
+* The `DraftPost` struct has an `add_text` method, so we can add text to `content` as before, but note that `DraftPost` does not have a `content` method defined!
+  * So now the program ensures all posts start as draft posts, and draft posts don’t have their content available for display.
+  * Any attempt to get around these constraints will result in a compiler error.
+
+#### Implementing Transitions as Transformations into Different Types
+* The changes we needed to make to `main` to reassign `post2` mean that this implementation doesn’t quite follow the object-oriented state pattern anymore: the transformations between the states are no longer encapsulated entirely within the `Post2` implementation.
+* However, our gain is that invalid states are now impossible because of the type system and the type checking that happens at compile time!
+  * This ensures that certain bugs, such as display of the content of an unpublished post, will be discovered before they make it to production.
