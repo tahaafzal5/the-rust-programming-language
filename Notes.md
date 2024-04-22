@@ -265,6 +265,32 @@
     - [Trade-offs of the State Pattern](#trade-offs-of-the-state-pattern)
     - [Encoding States and Behavior as Types](#encoding-states-and-behavior-as-types)
       - [Implementing Transitions as Transformations into Different Types](#implementing-transitions-as-transformations-into-different-types)
+- [Ch18 - Patterns and Matching](#ch18---patterns-and-matching)
+  - [All the Places Patterns Can Be Used](#all-the-places-patterns-can-be-used)
+    - [match Arms](#match-arms)
+    - [Conditional if let Expressions](#conditional-if-let-expressions)
+    - [while let Conditional Loops](#while-let-conditional-loops)
+    - [for Loops](#for-loops)
+    - [let Statements](#let-statements)
+    - [Function Parameters](#function-parameters)
+  - [Refutability: Whether a Pattern Might Fail to Match](#refutability-whether-a-pattern-might-fail-to-match)
+  - [Pattern Syntax](#pattern-syntax)
+    - [Matching Literals](#matching-literals)
+    - [Matching Named Variables](#matching-named-variables)
+    - [Multiple Patterns](#multiple-patterns)
+    - [Matching Ranges of Values with ..=](#matching-ranges-of-values-with-)
+    - [Destructuring to Break Apart Values](#destructuring-to-break-apart-values)
+      - [Destructuring Structs](#destructuring-structs)
+      - [Destructuring Enums](#destructuring-enums)
+      - [Destructuring Nested Structs and Enums](#destructuring-nested-structs-and-enums)
+      - [Destructuring Structs and Tuples](#destructuring-structs-and-tuples)
+      - [Ignoring Values in a Pattern](#ignoring-values-in-a-pattern)
+        - [An Entire Value with \_](#an-entire-value-with-_)
+        - [Parts of a Value with a Nested \_](#parts-of-a-value-with-a-nested-_)
+        - [An Unused Variable by Starting Its Name with \_](#an-unused-variable-by-starting-its-name-with-_)
+        - [Remaining Parts of a Value with ..](#remaining-parts-of-a-value-with-)
+        - [Extra Conditionals with Match Guards](#extra-conditionals-with-match-guards)
+    - [@ Bindings](#-bindings)
 
 # Introduction
 
@@ -2921,3 +2947,393 @@ overriding implementation of that same method.**
 * The changes we needed to make to `main` to reassign `post2` mean that this implementation doesn’t quite follow the object-oriented state pattern anymore: the transformations between the states are no longer encapsulated entirely within the `Post2` implementation.
 * However, our gain is that invalid states are now impossible because of the type system and the type checking that happens at compile time!
   * This ensures that certain bugs, such as display of the content of an unpublished post, will be discovered before they make it to production.
+
+# Ch18 - Patterns and Matching
+* Patterns are a special syntax in Rust for matching against the structure of types.
+* Using patterns in conjunction with `match` expressions and other constructs gives you more control over a program’s control flow.
+* A pattern consists of some combination of the following:
+  1. Literals
+  2. Destructured arrays, enums, structs, or tuples Variables
+  3. Wildcards
+  4. Placeholders
+* To use a pattern, we compare it to some value.
+  * If the pattern matches the value, we use the value parts in our code.
+  * If it doesn’t, the code associated with the pattern won’t run.
+
+## All the Places Patterns Can Be Used
+
+### match Arms
+* `match` expression that matches on an `Option<i32>` value in the variable `x`:
+  * ```Rust
+      match x {
+        None => None,
+        Some(i) => Some(i + 1),
+      }
+    ```
+* The patterns in this `match` expression are the `None` and `Some(i)` to the left of each arrow.
+* One requirement for `match` expressions is that they need to be *exhaustive* in the sense that all possibilities for the value in the match expression must be accounted for.
+* One way to ensure you’ve covered every possibility is to have a catch-all pattern for the last arm: for example, a variable name matching any value can never fail and thus covers every remaining case.
+* The particular pattern `_` will match anything, but it never binds to a variable, so it’s often used in the last match arm. The `_` pattern can be useful when you want to ignore any value not specified, for example.
+
+### Conditional if let Expressions
+* One of the ways `if let` expressions are used is as a shorter way to write the equivalent of a `match` that only matches one case.
+* We can also mix and match `if let`, `else if`, and `else if let` expressions.
+  * Doing so gives us more flexibility than a `match` expression in which we can express only one value to compare with the patterns.
+  * Rust doesn’t require that the conditions in a series of `if let`, `else if`, and `else if let` arms relate to each other.
+  * ```Rust
+      let favorite_color: Option<&str> = None;
+      let is_tuesday = false;
+      let age: Result<u8, _> = "34".parse();
+        
+      if let Some(color) = favorite_color {
+        println!("Using your favorite, {color}, as the background");
+      } else if is_tuesday {
+        println!("Tuesday is green day!");
+      } else if let Ok(age) = age {
+        if age > 30 {
+          println!("Using purple as the background color"); }
+        else {
+          println!("Using orange as the background color");
+        }
+      } else {
+        println!("Using blue as the background color");
+      }
+    ```
+* You can see that `if let` can also introduce shadowed variables in the same way that `match` arms can: the line `if let Ok(age) = age` introduces a new shadowed `age` variable that contains the value inside the `Ok` variant.
+  * This means we need to place the `if age > 30` condition within that block: we can’t combine these two conditions into `if let Ok(age) = age && age > 30` because the shadowed `age` we want to compare to 30 isn’t valid until the new scope starts with the curly bracket.
+* The downside of using `if let` expressions is that the compiler doesn’t check for exhaustiveness, whereas with `match` expressions it does.
+
+### while let Conditional Loops
+* Similar in construction to `if let`, the `while let` conditional loop allows a `while` loop to run for as long as a pattern continues to match.
+  * ```Rust
+      let mut stack = Vec::new();
+      
+      stack.push(1);
+      stack.push(2);
+      stack.push(3);
+
+      while let Some(top) = stack.pop() {
+          println!("{top}");
+      }
+    ```
+* The `while` loop continues running the code in its block as long as `pop` returns `Some`.
+* When pop returns `None`, the loop stops.
+
+### for Loops
+* In a `for` loop, the value that directly follows the keyword `for` is a pattern. E.g. in `for x in y`, the `x` is the pattern.
+  * ```Rust
+      let v = vec!['a', 'b', 'c'];
+      for (index, value) in v.iter().enumerate() {
+        // ..
+      }
+    ```
+* We adapt an iterator using the `enumerate` method so it produces a value and the index for that value, placed into a tuple.
+* The first value produced is the tuple `(0, 'a')`.
+  * When this value is matched to the pattern `(index, value)`, index will be `0` and value will be `'a'`.
+
+### let Statements
+* `let` statements look like this: `let PATTERN = EXPRESSION;`.
+* `let` statements can be used to destructure tuples like so: `let (x, y, z) = (1, 2, 3);`.
+  * Rust compares the value `(1, 2, 3)` to the pattern `(x, y, z)` and sees that the value matches the pattern, in that it sees that the number of elements is the same in both, so Rust binds `1` to `x`, `2` to `y`, and `3` to `z`.
+
+### Function Parameters
+  * ```Rust
+      // The `x` part is a pattern
+      fn foo(x: i32) {
+        // ...
+      }
+    ```
+* We can match a tuple in a function’s arguments to the pattern.
+  * ```Rust
+      fn print_coordinates(&(x, y): &(i32, i32)) {
+        println!("Current location: ({x}, {y})");
+      }
+
+      fn main() {
+        let point = (3, 5);
+        print_coordinates(&point);
+      }
+    ```
+
+## Refutability: Whether a Pattern Might Fail to Match
+* Patterns come in two forms: *refutable* and *irrefutable*.
+  * Patterns that will match for any possible value passed are irrefutable.
+  * An example would be `x` in the statement `let x = 5;` because `x` matches anything and therefore cannot fail to match.
+  * Patterns that can fail to match for some possible value are refutable.
+  * An example would be `Some(x)` in the expression `if let Some(x) = a_value` because if the value in the `a_value` variable is `None` rather than `Some`, the `Some(x)` pattern will not match.
+* Function parameters, `let` statements, and `for` loops can only accept irrefutable patterns because the program cannot do anything meaningful when values don’t match.
+* The `if let` and `while let` expressions accept refutable and irrefutable patterns, but the compiler warns against irrefutable patterns because, by definition, they’re intended to handle possible failure: the functionality of a conditional is in its ability to perform differently depending on success or failure.
+* When we try to use a refutable pattern where Rust requires an irrefutable pattern:
+  * ```Rust
+      let Some(x) = some_option_value;
+    ```
+* The code above doesn't compile.
+* If `some_option_value` were a `None` value, it would fail to match the pattern `Some(x)`, meaning the pattern is refutable.
+* However, the `let` statement can only accept an irrefutable pattern because there is nothing valid the code can do with a `None` value.
+* If we have a refutable pattern where an irrefutable pattern is needed, we can fix it by changing the code that uses the pattern: instead of using `let`, we can use `if let`.
+* Then, if the pattern doesn’t match, the code will just skip the code in the curly brackets, giving it a way to continue validly.
+  * ```Rust
+      if let Some(x) = some_option_value {
+        // ...
+      }
+    ```
+* If we give `if let` a pattern that will always match, such as `x`, the compiler will give a warning
+  * ```Rust
+      if let x = 5 {
+        println!("{x}");
+      };
+    ```
+
+## Pattern Syntax
+
+### Matching Literals
+  * ```Rust
+     let x = 1;
+      match x {
+        1 => println!("one"),
+        2 => println!("two"),
+        3 => println!("three"),
+        _ => println!("anything"),
+    }
+    ```
+  
+### Matching Named Variables
+* Named variables are irrefutable patterns that match any value.
+* However, there is a complication when you use named variables in `match` expressions.
+* Because `match` starts a new scope, variables declared as part of a pattern inside the `match` expression will shadow those with the same name outside the `match` construct, as is the case with all variables.
+* To create a `match` expression that compares the values of the outer `x` and `y`, rather than introducing a shadowed variable, we would need to use a match guard conditional instead.
+
+### Multiple Patterns
+* In `match` expressions, you can match multiple patterns using the `|` syntax.
+  * ```Rust
+      let x = 1;
+      match x {
+       1 | 2 => println!("one or two"),
+       _ => println!("anything"),
+      }
+    ```
+  
+### Matching Ranges of Values with ..=
+* The `..=` syntax allows us to match to an inclusive range of values.
+  * ```Rust
+      let x = 5;
+      match x {
+        1..=5 => println!("one through five"),
+        _ => println!("something else"),
+      }
+
+      let x = 'c';
+      match x {
+       'a'..='j' => println!("early ASCII letter"),
+       'k'..='z' => println!("late ASCII letter"),
+       _ => println!("something else"),
+      }
+    ```
+
+### Destructuring to Break Apart Values
+
+#### Destructuring Structs
+  * ```Rust
+    struct Point {
+      x: i32,
+      y: i32,
+    }
+
+    let p = Point { x: 0, y: 7 };
+    let Point { x: a, y: b } = p;
+    
+    // But we also have a shorthand for the above in Rust:
+    let Point { a, b } = p;
+
+    // We can also use it in a match statement
+    match p {
+      Point { x, y: 0 } => println!("On the x axis at {x}"),
+      Point { x: 0, y } => println!("On the y axis at {y}"),
+      Point { x, y } => {
+        println!("On neither axis: ({x}, {y})");
+      }
+    }
+    ```
+
+#### Destructuring Enums
+  * ```Rust
+      enum Message {
+       Quit,
+       Move { x: i32, y: i32 },
+       Write(String),
+       ChangeColor(i32, i32, i32),
+      }
+
+      let msg = Message::ChangeColor(0, 160, 255);
+      match msg {
+        Message::Quit => {
+          println!("The Quit variant has no data to destructur");
+        }
+        Message::Move { x, y } => {
+          println!("Move in the x dir {x}, in the y dir {y}");
+        }
+        Message::Write(text) => {
+          println!("Text message: {text}");
+        }
+        Message::ChangeColor(r, g, b) => {
+          println!("Change color to red {r}, green {g}, and blue {b}");
+        }
+      }
+    ```
+* The code above will print "Change color to red 0, green 160, and blue 255".
+* For enum variants without any data, like `Message::Quit`, we can’t destructure the value any further. We can only match on the literal `Message::Quit` value, and no variables are in that pattern.
+* For struct-like enum variants, such as `Message::Move`, we can use a pattern similar to the pattern we specify to match structs.
+* For tuple-like enum variants, like `Message::Write` that holds a tuple with one element and `Message::ChangeColor` that holds a tuple with three elements, the pattern is similar to the pattern we specify to match tuples.
+
+#### Destructuring Nested Structs and Enums
+* Matching can work on nested items too.
+* In this example, we match `msg` with `Message::ChangeColor` first and then `Color::Hsv` or `Color::Rgb`.
+  * ```Rust
+      enum Color {
+       Rgb(i32, i32, i32),
+       Hsv(i32, i32, i32),
+      }
+
+      enum Message {
+       Quit,
+       Move { x: i32, y: i32 },
+       Write(String),
+       ChangeColor(Color),
+      }
+
+      let msg = Message::ChangeColor(Color::Hsv(0, 160, 255));
+      match msg {
+        Message::ChangeColor(Color::Rgb(r, g, b)) => {
+          println!("Change color to red {r}, green {g}, and blue {b}");
+        }
+        Message::ChangeColor(Color::Hsv(h, s, v)) => {
+          println!("Change color to hue {h}, saturation {s}, value {v}");
+        }
+        _ => (),
+      }
+    ```
+
+#### Destructuring Structs and Tuples
+  * ```Rust
+     let ((feet, inches), Point { x, y }) = ((3, 10), Point { x: 3, y: -10 });
+    ```
+
+#### Ignoring Values in a Pattern
+* There are a few ways to ignore entire values or parts of values in a pattern: using the `_` pattern, using the `_` pattern within another pattern, using a name that starts with an underscore, or using `..` to ignore remaining parts of a value.
+
+##### An Entire Value with _
+* The value 3 that is passed in is ignored:
+  * ```Rust
+      fn foo(_: i32, y: i32) {
+        println!("This code only uses the y parameter: {y}");
+      }
+
+      foo(3, 4);
+    ```
+
+##### Parts of a Value with a Nested _
+* We can also use `_` inside another pattern to ignore just part of a value, e.g., when we want to test for only part of a value but have no use for the other parts in the corresponding code we want to run.
+* The business requirements are that the user should not be allowed to overwrite an existing customization of a setting but can unset the setting and give it a value if it is currently unset.
+  * ```Rust
+      let mut setting_value = Some(5);
+      let new_setting_value = Some(10);
+      
+      match (setting_value, new_setting_value) {
+        (Some(_), Some(_)) => {
+          println!("Can't overwrite an existing customized value"); }
+          _ => {
+            setting_value = new_setting_value;
+          }
+      }
+    ```
+* In the first match arm, we don’t need to match on or use the values inside either `Some` variant, but we do need to test for the case when `setting_value` and `new_setting_value` are the `Some` variant.
+* In that case, we print the reason for not changing `setting_value`, and it doesn’t get changed.
+* In all other cases (if either `setting_value` or `new_setting_value` is `None`) expressed by the `_` pattern in the second arm, we want to allow `new_setting_value` to become `setting_value`.
+
+##### An Unused Variable by Starting Its Name with _
+* `let _x = 5;` starting a variable name with an `_`, you won't get a warning from Rust.
+* The syntax `_x` still binds the value to the variable, whereas `_` doesn’t bind at all.
+  * ```Rust
+      let s = Some(String::from("Hello!"));
+
+      if let Some(_s) = s {
+        println!("found a string");
+      }
+
+      println!("{:?}", s);
+    ```
+* The code above will produce an error because the `s` value will still be moved into `_s`, which prevents us from using `s` again.
+* We can fix it by using only an `_` so `s` doesn't get moved and we are still able to use it.
+
+##### Remaining Parts of a Value with ..
+* With values that have many parts, we can use the `..` syntax to use specific parts and ignore the rest, avoiding the need to list underscores for each ignored value.
+* The `..` pattern ignores any parts of a value that we haven’t explicitly matched in the rest of the pattern.
+  * ```Rust
+      let numbers = (2, 4, 8, 16, 32);
+       match numbers {
+        (first, .., last) => {
+          println!("Some numbers: {first}, {last}");
+        }
+      }
+    ```
+* The first and last values are matched with `first` and `last`. The `..` will match and ignore everything in the middle.
+
+##### Extra Conditionals with Match Guards
+* A match guard is an additional if condition, specified after the pattern in a `match` arm, that must also match for that arm to be chosen.
+  * ```Rust
+      let num = Some(4);
+      match num {
+        Some(x) if x % 2 == 0 => println!("The number {x} is even"),
+        Some(x) => println!("The number {x} is odd"),
+        None => (),
+      }
+    ```
+* When `num` is compared to the pattern in the first arm, it matches because `Some(4)` matches `Some(x)`. Then the match guard checks whether the remainder of dividing `x` by 2 is equal to 0, and because it is, the first arm is selected.
+* We could use match guards to solve our pattern-shadowing problem.
+  * Recall that we created a new variable inside the pattern in the `match` expression instead of using the variable outside the `match`.
+  * That new variable meant we couldn’t test against the value of the outer variable, but match guards can help fix the issue.
+    * ```Rust
+      let x = Some(5);
+      let y = 10;
+      match x {
+        Some(50) => println!("Got 50"),
+        Some(n) if n == y => println!("Matched, n = {n}"),
+        _ => println!("Default case, x = {:?}", x),
+      }
+      
+      println!("at the end: x = {:?}, y = {y}", x);
+      ```
+    * The code above will now print "Default case, x = Some(5)".
+* You can also use the or operator `|` in a match guard to specify multiple patterns; the match guard condition will apply to all the patterns.
+  * ```Rust
+      let x = 4;
+      let y = false;
+      match x {
+        4 | 5 | 6 if y => println!("yes"),
+        _ => println!("no"),
+      }
+    ```
+* The code above prints "no" because even tho `x` is 4, the match guard fails.
+* We can use precedence to only apply the match guard to the last value like so: `4 | 5 | (6 if y) =>`.
+  * This will print "yes".
+
+### @ Bindings
+  * ```Rust
+      enum Message {
+        Hello { id: i32 },
+    }
+
+    let msg = Message::Hello { id: 5 };
+    match msg {
+      Message::Hello {
+          id: id_variable @ 3..=7,
+      } => println!("Found an id in range: {id_variable}"),
+      Message::Hello { id: 10..=12 } => {
+          println!("Found an id in another range")
+      }
+      Message::Hello { id } => println!("Some other id: {id}"),
+    }
+    ```
+* By specifying `id_variable @` before the range` 3..=7`, we’re capturing whatever value matched the range while also testing that the value matched the range pattern.
+* In the second arm, where we only have a range specified in the pattern, the code associated with the arm doesn’t have a variable that contains the actual value of the `id` field. The `id` field’s value could have been 10, 11, or 12, but the code that goes with that pattern doesn’t know which it is. The pattern code isn’t able to use the value from the `id` field because we haven’t saved the `id` value in a variable.
+* In the last arm, where we’ve specified a variable without a range, we do have the value available to use in the arm’s code in a variable named `id`. The reason is that we’ve used the struct field shorthand syntax. But we haven’t applied any test to the value in the `id` field in this arm, as we did with the first two arms: any value would match this pattern.
