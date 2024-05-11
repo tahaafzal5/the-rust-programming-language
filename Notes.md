@@ -322,6 +322,27 @@
         - [How to Write a Custom derive Macro](#how-to-write-a-custom-derive-macro)
       - [Attribute-Like Macros](#attribute-like-macros)
       - [Function-Like Macros](#function-like-macros)
+- [Ch20 - Final Project: Building A Multithreaded Web Server](#ch20---final-project-building-a-multithreaded-web-server)
+  - [Building a Single-Threaded Web Server](#building-a-single-threaded-web-server)
+    - [Listening to the TCP Connection](#listening-to-the-tcp-connection)
+    - [Reading the Request](#reading-the-request)
+    - [A Closer Look at an HTTP Request](#a-closer-look-at-an-http-request)
+    - [Writing a Response](#writing-a-response)
+    - [Returning Real HTML](#returning-real-html)
+    - [Validating the Request and Selectively Responding](#validating-the-request-and-selectively-responding)
+  - [Turning Our Single-Threaded Server into a Multithreaded Server](#turning-our-single-threaded-server-into-a-multithreaded-server)
+    - [Simulating a Slow Request](#simulating-a-slow-request)
+    - [Improving Throughput with a Thread Pool](#improving-throughput-with-a-thread-pool)
+      - [Spawning a Thread for Each Request](#spawning-a-thread-for-each-request)
+      - [Building ThreadPool Using Compiler-Driven Development](#building-threadpool-using-compiler-driven-development)
+      - [Validating the Number of Threads in new](#validating-the-number-of-threads-in-new)
+      - [Creating Space to Store the Threads](#creating-space-to-store-the-threads)
+      - [Sending Code from the ThreadPool to a Thread](#sending-code-from-the-threadpool-to-a-thread)
+      - [Sending Requests to Threads via Channels](#sending-requests-to-threads-via-channels)
+      - [Implementing the execute Method](#implementing-the-execute-method)
+    - [Graceful Shutdown and Cleanup](#graceful-shutdown-and-cleanup)
+      - [Implementing the Drop Trait on ThreadPool](#implementing-the-drop-trait-on-threadpool)
+      - [Signaling to the Threads to Stop Listening for Jobs](#signaling-to-the-threads-to-stop-listening-for-jobs)
 
 # Introduction
 
@@ -4249,3 +4270,256 @@ overriding implementation of that same method.**
       pub fn sql(input: TokenStream) -> TokenStream {
     ```
 * This definition is similar to the custom `derive` macro’s signature: we receive the tokens that are inside the parentheses and return the code we wanted to generate.
+
+# Ch20 - Final Project: Building A Multithreaded Web Server
+* We’ll make a web server that says “hello”. We will do this by:
+  1. Learn a bit about TCP and HTTP.
+  2. Listen for TCP connections on a socket.
+  3. Parse a small number of HTTP requests.
+  4. Create a proper HTTP response.
+  5. Improve the throughput of our server with a thread pool. 
+* This isn't the best way to make a web server in Rust, however.
+
+## Building a Single-Threaded Web Server
+* The two main protocols involved in web servers are *Hypertext Transfer Protocol (HTTP)* and *Transmission Control Protocol (TCP)*. Both protocols are *request-response* protocols, meaning a *client* initiates requests and a *server* listens to the requests and provides a response to the client. The contents of those requests and responses are defined by the protocols.
+* TCP is the lower-level protocol that describes the details of how information gets from one server to another but doesn’t specify what that information is.
+* HTTP builds on top of TCP by defining the contents of the requests and responses.
+* It’s technically possible to use HTTP with other protocols, but in the vast majority of cases, HTTP sends its data over TCP. We’ll work with the raw bytes of TCP and HTTP requests and responses.
+
+### Listening to the TCP Connection
+* Our web server needs to listen to a TCP connection. The standard library offers a `std::net` module that lets us do this.
+* The `bind` function in this scenario works like the new function in that it will return a new `TcpListener` instance. The function is called `bind` because, in networking, connecting to a port to listen to is known as “binding to a port.”
+  * `bind` returns a `Result<T, E>`, which indicates that it’s possible for binding to fail. E.g., connecting to port `80` requires administrator privileges (non-administrators can listen only on ports higher than `1023`).
+  * Binding also wouldn’t work, e.g., if we ran two instances of our program and so had two programs listening to the same port.
+* The `incoming` method on `TcpListener` returns an iterator of type `TcpStream` that gives us a sequence of streams.
+  * A single stream represents an open connection between the client and the server. A connection is the name for the full request and response process in which a client connects to the server, the server generates a response, and the server closes the connection. 
+  * We will read from the `TcpStream` to see what the client sent and then write our response to the stream to send data back to the client. 
+  * The `for` loop will process each connection in turn and produce a series of streams for us to handle.
+  * The reason we might receive errors from the `incoming` method when a client connects to the server is that we’re not actually iterating over connections. Instead, we’re iterating over *connection attempts*. The connection might not be successful for a number of reasons, many of them operating system specific. E.g., many operating systems have a limit to the number of simultaneous open connections they can support; new connection attempts beyond that number will produce an error until some of the open connections are closed.
+* The reason why we might see multiple messages printed for one successful connection for one browser request; might be that the browser is making a request for the page as well as a request for other resources, like the favicon.ico icon.
+  * It could also be that the browser is trying to connect to the server multiple times because the server isn’t responding with any data.
+
+### Reading the Request
+* We bring `std::io::prelude` and `std::io::BufReader` into scope to get access to traits and types that let us read from and write to the stream.
+* In the `handle_connection` function, we create a new `BufReader` instance that wraps a reference to the `stream`. `BufReader` adds buffering by managing calls to the `std::io::Read` trait methods for us.
+* We create a variable `http_request` to collect the lines of the request the browser sends to our server. We indicate that we want to collect these lines in a vector by adding the `Vec<_>` type annotation.
+* `BufReader` implements the `std::io::BufRead` trait, which provides the `lines` method. The `lines` method returns an iterator of `Result<String, std::io::Error>` by splitting the stream of data whenever it sees a newline byte. To get each String, we `map` and `unwrap` each `Result`.
+* The `Result` might be an error if the data isn’t valid UTF-8 or if there was a problem reading from the stream.
+* The browser signals the end of an HTTP request by sending two newline characters in a row, so to get one request from the stream, we take lines until we get an empty line.
+* The program’s output in the terminal will look like this:
+  * ```
+      Request: [
+        "GET / HTTP/1.1",
+        "Host: 127.0.0.1:7878",
+        "Sec-Fetch-Site: none",
+        "Connection: keep-alive",
+        "Upgrade-Insecure-Requests: 1",
+        "Sec-Fetch-Mode: navigate",
+        "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
+        "Accept-Language: en-US,en;q=0.9",
+        "Sec-Fetch-Dest: document",
+        "Accept-Encoding: gzip, deflate",
+      ]
+    ```
+
+### A Closer Look at an HTTP Request
+* HTTP is a text-based protocol, and a request takes this format:
+  * ```
+      Method Request-URI HTTP-Version CRLF
+      headers CRLF
+      message-body
+    ```
+* The first line is the request line that holds information about what the client is requesting. The first part of the request line indicates the method being used, such as `GET` or `POST`, which describes how the client is making this request.
+* The next part of the request line is `/`, which indicates the *uniform resource identifier (URI)* the client is requesting: a URI is almost, but not quite, the same as a *uniform resource locator (URL)*.
+* The last part is the HTTP version the client uses, and then the request line ends in a carriage return and line feed CRLF sequence.
+* After the request line, the remaining lines starting from `Host:` onward are headers.
+* `GET` requests have no body.
+
+### Writing a Response
+* Responses have the following format:
+  * ```
+      HTTP-Version Status-Code Reason-Phrase CRLF
+      headers CRLF
+      message-body
+    ```
+* The first line is a *status line* that contains the HTTP version used in the response, a numeric status code that summarizes the result of the request, and a reason phrase that provides a text description of the status code. After the CRLF sequence are any headers, another CRLF sequence, and the body of the response.
+* A response that uses HTTP version 1.1, and has a status code of 200, an OK reason phrase, no headers, and no body looks like `HTTP/1.1 200 OK\r\n\r\n`
+* We can write our response as bytes using `as_bytes` to the `stream` to send it back down the connection.
+
+### Returning Real HTML
+* We have some html in "hello.xhtml" file, which our code can read and return as the response.
+* To ensure a valid HTTP response, we add the `Content-Length` header which is set to the size of our response body, in this case the size of `hello.xhtml`.
+
+### Validating the Request and Selectively Responding
+* We can have another file `404.xhtml` that we return as the response if the client requests a URI other than `/`.
+
+## Turning Our Single-Threaded Server into a Multithreaded Server
+* Currently, the server will process each request in turn, meaning it won’t process a second connection until the first is finished processing.
+* Also, if the server receives a request that takes a long time to process, subsequent requests will have to wait until the long request is finished.
+
+### Simulating a Slow Request
+* We will simulate the situation above to see how our single-threaded server will be affected.
+* We can do so by adding a `sleep` if we request `/sleep` from our server.
+
+### Improving Throughput with a Thread Pool
+* One of the ways to improve our handling of backed up responses is a thread pool.
+* A *thread pool* is a group of spawned threads that are waiting and ready to handle a task.
+  * When the program receives a new task, it assigns one of the threads in the pool to the task, and that thread will process the task.
+  * The remaining threads in the pool are available to handle any other tasks that come in while the first thread is processing.
+  * When the first thread is done processing its task, it’s returned to the pool of idle threads, ready to handle a new task.
+* Rather than spawning unlimited threads, then, we’ll have a fixed number of threads waiting in the pool.
+* If each thread is responding to a long-running request, subsequent requests can still back up in the queue, but it will take longer to reach that point.
+* Other options to explore are the fork/join model, the single-threaded async I/O model, and the multithreaded async I/O model.
+
+#### Spawning a Thread for Each Request
+* Spawning a thread for each request is easier to implement but this could eventually overload the system since we could technically spawn unlimited number of threads.
+
+#### Building ThreadPool Using Compiler-Driven Development
+* We will implement `main()` as if we have `ThreadPool` so that we know what the API would look like.
+* Then, we use the compiler messages to implement the features.
+* We will switch the `hello` crate from a binary crate to a library crate to hold our `ThreadPool` implementation that we can do by adding `src/lib.rs`.
+* A library crate could also be used for any work we want to do using a thread pool, not just for serving web requests.
+* Since we want `ThreadPool`'s `execute` function to look similar to the standard library `thread::spawn` implementation, we can take a look at that:
+  * ```Rust
+      pub fn spawn<F, T>(f: F) -> JoinHandle<T>
+      where
+          F: FnOnce() -> T,
+          F: Send + 'static,
+          T: Send + 'static,
+    ```
+* The `F` type parameter is the one we’re concerned with here; the `T` type parameter is related to the return value, and we’re not concerned with that.
+* We can see that `spawn` uses `FnOnce` as the trait bound on `F`. This is probably what we want as well, because we’ll eventually pass the argument we get in `execute` to `spawn`.
+* We can be confident that `FnOnce` is the trait we want to use because the thread for running a request will only execute that request’s closure one time, which matches the `Once` in `FnOnce`.
+* The `F` type parameter also has the trait bound `Send` and the lifetime bound `'static`:
+  * we need `Send` to transfer the closure from one thread to another
+  * we need `'static` because we don’t know how long the thread will take to execute.
+* We can now create an `execute` method on `ThreadPool` that will take a generic parameter of type `F` with these bounds:
+  * ```Rust
+      pub fn execute<F>(&self, f: F)
+      where
+        F: FnOnce() + Send + 'static,
+      {
+      }
+    ```
+* We still use the `()` after `FnOnce` because this `FnOnce` represents a closure that takes no parameters and returns the unit type `()`.
+  * Just like function definitions, the return type can be omitted from the signature, but even if we have no parameters, we still need the parentheses.
+
+#### Validating the Number of Threads in new
+* We can `assert` that we don't pass in `size` 0 to `new` since that doesn't make sense but is a valid value for `usize`.
+
+#### Creating Space to Store the Threads
+* Now that we have a way to know we have a valid number of threads to store in the pool, we can create those threads and store them in the `ThreadPool` struct before returning the struct.
+* To see how do we “store” a thread, we can take another look at the `thread::spawn` signature:
+  * ```Rust
+      pub fn spawn<F, T>(f: F) -> JoinHandle<T>
+      where
+          F: FnOnce() -> T,
+          F: Send + 'static,
+          T: Send + 'static,
+    ```
+* The `spawn` function returns a `JoinHandle<T>`, where `T` is the type that the closure returns. Let’s try using `JoinHandle` too and see what happens. In our case, the closures we’re passing to the thread pool will handle the connection and not return anything, so `T` will be the unit type `()`.
+* We’ll update the definition of `ThreadPool` to hold a vector of `thread::JoinHandle<()>` instances, initialized the vector with a capacity of `size`, set up a `for` loop that will run some code to create the threads, and returned a `ThreadPool` instance containing them.
+* The `with_capacity` function performs the same task as `Vec::new` but with an important difference: it pre-allocates space in the vector.
+  * Because we know we need to store size elements in the vector, doing this allocation up front is slightly more efficient than using `Vec::new`, which resizes itself as elements are inserted.
+
+#### Sending Code from the ThreadPool to a Thread
+* The standard library provides `thread::spawn` as a way to create threads, and `thread::spawn` expects to get some code the thread should run as soon as the thread is created.
+* However, in our case, we want to create the threads and have them *wait* for code that we’ll send later. The standard library’s implementation of threads doesn’t include any way to do that; we have to implement it manually.
+* We’ll implement this behavior by introducing a new data structure between the `ThreadPool` and the threads that will manage this new behavior.
+  * We’ll call this data structure `Worker`, which is a common term in pooling implementations. The `Worker` picks up code that needs to be run and runs the code in its thread.
+  * Instead of storing a vector of `JoinHandle<()>` instances in the thread pool, we’ll store instances of the `Worker` struct. Each `Worker` will store a single `JoinHandle<()>` instance.
+  * Then we’ll implement a method on `Worker` that will take a closure of code to run and send it to the already running thread for execution.
+  * We’ll also give each `Worker` an `id` so we can distinguish between the different instances of `Worker` in the pool when logging or debugging.
+* If the operating system can’t create a thread because there aren’t enough system resources, `thread::spawn` will panic. That will cause our whole server to panic, even though the creation of some threads might succeed. For our example, this behavior is fine, but in a production implementation, we would use `std::thread::Builder` and its `spawn` method that returns `Result` instead.
+
+#### Sending Requests to Threads via Channels
+* We want the `Worker` structs that we just created to fetch the code to run from a queue held in the `ThreadPool` and send that code to its thread to run.
+* The channels we learned about in [Chapter 16](#ch16---fearless-concurrency) - a simple way to communicate between two threads - would be perfect for this.
+* We’ll use a channel to function as the queue of jobs, and `execute` will send a job from the `ThreadPool` to the `Worker` instances, which will send the job to its thread.
+* The plan:
+  1. The `ThreadPool` will create a channel and hold on to the sender.
+  2. Each `Worker` will hold on to the receiver.
+  3. A new `Job` struct will hold the closures we want to send down the channel.
+  4. The `execute` method will send the job it wants to execute through the sender.
+  5. In its thread, the `Worker` will loop over its receiver and execute the closures of any jobs it receives.
+* The channel implementation that Rust provides is multiple producer, single consumer.
+  * This means we can’t just clone the consuming end of the channel.
+  * We also don’t want to send a message multiple times to multiple consumers; we want one list of messages with multiple Worker instances such that each message gets processed once.
+  * Additionally, taking a job off the channel queue involves mutating the receiver, so the threads need a safe way to share and modify receiver; otherwise, we might get race conditions.
+  * Recall the thread-safe smart pointers discussed in [Chapter 16](#ch16---fearless-concurrency): to share ownership across multiple threads and allow the threads to mutate the value, we need to use `Arc<Mutex<T>>`.
+  * The `Arc` type will let multiple `Worker` instances own the receiver, and `Mutex` will ensure that only one `Worker` gets a job from the receiver at a time.
+
+#### Implementing the execute Method
+* We have `Job` as a type alias for a trait object that holds the type of closure that `execute` receives.
+* As discussed in [Creating Type Synonyms with Type Aliases](#creating-type-synonyms-with-type-aliases), type aliases allow us to make long types shorter for ease of use.
+* After creating a new `Job` instance using the closure we get in `execute`, we send that job down the sending end of the channel. We’re calling `unwrap` on send for the case that sending fails. This might happen if, for example, we stop all our threads from executing, meaning the receiving end has stopped receiving new messages.
+  * At the moment, we can’t stop our threads from executing: our threads continue executing as long as the pool exists.
+  * The reason we use `unwrap` is that we know the failure case won’t happen, but the compiler doesn’t know that.
+* In the `Worker`, our closure being passed to `thread::spawn` still only references the receiving end of the channel.
+  * Instead, we need the closure to loop forever, asking the receiving end of the channel for a job and running the job when it gets one.
+  * In the closure to `thread::spawn`
+    - we first call `lock` on the receiver to acquire the mutex, and then we call `unwrap` to panic on any errors.
+    - Acquiring a lock might fail if the mutex is in a poisoned state, which can happen if some other thread panicked while holding the lock rather than releasing the lock. In this situation, calling `unwrap` to have this thread panic is the correct action to take.
+    - If we get the lock on the mutex, we call `recv` to receive a `Job` from the channel. The final `unwrap` moves past any errors might have here that might occur if the thread holding the sender has shut down, similar to how the send method returns `Err` if the receiver shuts down.
+    - The call to `recv` blocks, so if there is no job yet, the current thread will wait until a job becomes available.
+    - The `Mutex<T>` ensures that only one `Worker` thread at a time is trying to request a job.
+* We did **not** write the `Worker` thread like so:
+  * ```Rust
+      impl Worker {
+        fn new(
+          id: usize,
+          receiver: Arc<Mutex<mpsc::Receiver<Job>>>,
+        ) -> Worker {
+          let thread = thread::spawn(move || {
+            while let Ok(job) = receiver.lock().unwrap().recv() {
+              println!("Worker {id} got a job; executing...")
+
+              job();
+            }
+          });
+
+          Worker { id, thread }
+        }
+      }
+    ```
+* Even though the code compiles and runs, it won't produce the output we are expecting: a slow request will still cause other requests to wait to be processed. Reason:
+  * the `Mutex` struct has no public `unlock` method because the ownership of the lock is based on the lifetime of the` MutexGuard<T>` within the `LockResult<MutexGuard<T>>` that the `lock` method returns.
+  * At compile time, the borrow checker can then enforce the rule that a resource guarded by a `Mutex` cannot be accessed unless we hold the lock. However, this implementation can also result in the lock being held longer than intended if we aren’t mindful of the lifetime of the `MutexGuard<T>`.
+  * The code in `let job = receiver.lock().unwrap().recv().unwrap();` works because with `let`, any temporary values used in the expression on the right-hand side of the equal sign are immediately dropped when the `let` statement ends.
+  * However, `while let` (and `if let` and `match`) does not drop temporary values until the end of the associated block. In the example above, the `lock` remains held for the duration of the call to `job()`, meaning other `Worker` instances cannot receive jobs.
+
+### Graceful Shutdown and Cleanup
+* We get some warnings about the `workers`, `id`, and `thread` fields that we’re not using in a direct way that reminds us we’re not cleaning up anything.
+* When we use "CTRL-C" to halt the main thread, all other threads are stopped immediately as well, even if they’re in the middle of serving a request.
+* We will implement the `Drop` trait to call `join` on each of the threads in the pool so they can finish the requests they’re working on before closing.
+* Then we’ll implement a way to tell the threads they should stop accepting new requests and shut down.
+
+#### Implementing the Drop Trait on ThreadPool
+* When we implement `Drop` on our thread pool. When the pool is dropped, our threads should all join to make sure they finish their work.
+* The following doesn't work:
+  * ```Rust
+      impl Drop for ThreadPool {
+        fn drop(&mut self) {
+          for worker in &mut self.workers {
+            println!("Shutting down worker {}", worker.id);
+
+            worker.thread.join().unwrap();
+          }
+        }
+      }
+    ```
+* The compile error we get tells us we can’t call `join` because we only have a mutable borrow of each `worker` and `join` takes ownership of its argument.
+*  To solve this issue, we need to move the thread out of the `Worker` instance that owns thread so `join` can consume the thread.
+   * If `Worker` holds an` Option<thread::JoinHandle<()>>` instead, we can call `take()`  on the `Option` to move the value out of the `Some` variant and leave a `None` variant in its place.
+   * In other words, a `Worker` that is running will have a `Some` variant in thread, and when we want to clean up a `Worker`, we’ll replace `Some` with `None` so the `Worker` doesn’t have a thread to run.
+
+#### Signaling to the Threads to Stop Listening for Jobs
+* At this point, we won't get any warnings when compiling, but it still doesn’t function the way we want it to yet.
+* The key is the logic in the closures run by the threads of the `Worker` instances: at the moment, we call `join`, but that won’t shut down the threads, because they `loop` forever looking for jobs. If we try to drop our `ThreadPool` with our current implementation of `drop`, the main thread will block forever, waiting for the first thread to finish.
+* To fix this problem, we’ll need a change in the `ThreadPool` `drop` implementation and then a change in the `Worker` loop.
+* We’ll change the `ThreadPool` `drop` implementation to explicitly drop the `sender` before waiting for the threads to finish using the same technique of using `take()` to move the `sender` out of `ThreadPool`.
+* Dropping `sender` closes the channel, which indicates no more messages will be sent.
+  * When that happens, all the calls to `recv()` that the `Worker` instances do in the infinite loop will return an error.
+  * We change the `Worker` loop to gracefully exit the loop in that case, which means the threads will finish when the `ThreadPool` `drop` implementation calls `join` on them.
+* 
