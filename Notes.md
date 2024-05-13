@@ -1003,7 +1003,7 @@
 ### A Shortcut for Propagating Errors: The ? Operator
 * Propagating errors is so common in Rust that Rust provides the question mark operator `?` to make this easier.
 * The `?` placed after a `Result` value is defined to work in almost the same way as the `match` expressions.
-  * If the value of the `Result` is an O`k, the value inside the `Ok` will get returned from this expression, and the program will continue. 
+  * If the value of the `Result` is an `Ok`, the value inside the `Ok` will get returned from this expression, and the program will continue. 
   * If the value is an `Err`, the `Err` will be returned from the whole function as if we had used the return keyword so the error value gets propagated to the calling code.
 * There is a difference between what the `match` expression does and what the `?` operator does:
   * Error values that have the `?` operator called on them go through the `from` function, defined in the `From` trait in the standard library, which is used to convert values from one type into another. 
@@ -1260,7 +1260,7 @@ overriding implementation of that same method.**
     }
     ```
 * You can only use `impl Trait` if you’re returning a single type. 
-* E.g, this code that returns either a `NewsArticle` or a `Tweet` with the return type specified as `impl Summary` **wouldn’t work**:
+* E.g, this code that returns either a `NewsArticle` or a `Tweet` with the return type specified as `impl Summary` **wouldn’t work** even though both `NewsArticle` and `Tweet` implement `Summary`:
   * ```Rust
     fn returns_summarizable(switch: bool) -> impl Summary {
       if switch {
@@ -1408,7 +1408,7 @@ overriding implementation of that same method.**
 * Like:
   * ```Rust
     fn first_word(s: &str) -> &str
-    // instead of the following in pre-1.0 Rust versions
+    // Instead of the following in pre-1.0 Rust versions
     fn first_word<'a>(s: &'a str) -> &'a str
     ```
 * The elision rules don’t provide full inference. If Rust deterministically applies the rules but there is still ambiguity as to what lifetimes the references have, the compiler won’t guess what the lifetime of the remaining references should be. Instead, the compiler will give you an error that you can resolve by adding the lifetime annotations.
@@ -1420,7 +1420,7 @@ overriding implementation of that same method.**
   *  Rules:
      1. The compiler assigns a lifetime parameter to each parameter that’s a reference. In other words, a function with one parameter gets one lifetime parameter: `fn foo<'a>(x: &'a i32);` a function with two parameters gets two separate lifetime parameters: `fn foo<'a, 'b>(x: &'a i32, y: &'b i32);` and so on.
      2. If there is exactly one input lifetime parameter, that lifetime is assigned to all output lifetime parameters: `fn foo<'a>(x: &'a i32) -> &'a i32`.
-     3. The third rule is that, if there are multiple input lifetime parameters, but one of them is `&self` (or `&mut self` because this is a method), the lifetime of `self` is assigned to all output lifetime parameters. This rule makes methods much nicer to read and write because fewer symbols are necessary.
+     3. If there are multiple input lifetime parameters, but one of them is `&self` (or `&mut self` because this is a method), the lifetime of `self` is assigned to all output lifetime parameters. This rule makes methods much nicer to read and write because fewer symbols are necessary.
 * Examples:
   * Compiler can apply all 3 rules to `fn first_word(s: &str) -> &str {`
   * But it cannot apply rules 2 and 3 to `fn longest(x: &str, y: &str) -> &str {` so gives an error for the programmer to specify the lifetimes.
